@@ -13,7 +13,7 @@ def sample_items():
 
 
 def sample_utility():
-    u = torch.zeros(3)
+    u = torch.zeros(3).long()
     while u.sum() == 0:
         u = torch.from_numpy(np.random.choice(11, 3, replace=True))
     return u
@@ -32,19 +32,19 @@ class ContextNet(nn.Module):
     def __init__(self, embedding_size=100):
         super().__init__()
         self.embedding_size = embedding_size
-        self.embedding = nn.Embedding(10, embedding_size)
+        self.embedding = nn.Embedding(11, embedding_size)
         self.lstm = nn.GRU(
             input_size=embedding_size,
             hidden_size=embedding_size,
             num_layers=1)
 
     def forward(self, x):
+        print('type(x)', type(x))
+        print('x.size()', x.size())
+        print('x', x)
         x = self.embedding(x)
         x = x.view(-1, 1, self.embedding_size)
-        state = (
-            # Variable(torch.zeros(1, 1, self.embedding_size)),
-            Variable(torch.zeros(1, 1, self.embedding_size))
-        )
+        state = Variable(torch.zeros(1, 1, self.embedding_size))
         x, state = self.lstm(x, state)
         return state[0].view(1, -1)
 
@@ -52,7 +52,8 @@ class ContextNet(nn.Module):
 class UtteranceNet(nn.Module):
     def __init__(self, embedding_size=100):
         super().__init__()
-        self.embedding = nn.Embedding(10, embedding_size)
+        self.embedding_size = embedding_size
+        self.embedding = nn.Embedding(11, embedding_size)
         # using GRU, since means the hidden state exactly matches the embedding size,
         # dont need to think about how to handle the presence of both cell and
         # hidden states
@@ -63,11 +64,9 @@ class UtteranceNet(nn.Module):
 
     def forward(self, x):
         x = self.embedding(x)
-        x = self.lstm(x)
-        state = (
-            # Variable(torch.zeros(1, 1, self.embedding_size)),
-            Variable(torch.zeros(1, 1, self.embedding_size))
-        )
+        x = x.view(-1, 1, self.embedding_size)
+        # x = self.lstm(x)
+        state = Variable(torch.zeros(1, 1, self.embedding_size))
         x, state = self.lstm(x, state)
         return state[0].view(1, -1)
 
@@ -75,7 +74,8 @@ class UtteranceNet(nn.Module):
 class ProposalNet(nn.Module):
     def __init__(self, embedding_size=100):
         super().__init__()
-        self.embedding = nn.Embedding(10, embedding_size)
+        self.embedding_size = embedding_size
+        self.embedding = nn.Embedding(11, embedding_size)
         self.lstm = nn.GRU(
             input_size=embedding_size,
             hidden_size=embedding_size,
@@ -83,17 +83,15 @@ class ProposalNet(nn.Module):
 
     def forward(self, x):
         x = self.embedding(x)
-        x = self.lstm(x)
-        state = (
-            # Variable(torch.zeros(1, 1, self.embedding_size)),
-            Variable(torch.zeros(1, 1, self.embedding_size))
-        )
+        x = x.view(-1, 1, self.embedding_size)
+        # x = self.lstm(x)
+        state = Variable(torch.zeros(1, 1, self.embedding_size))
         x, state = self.lstm(x, state)
         return state[0].view(1, -1)
 
 
 class CombinedNet(nn.Module):
-    def __init__(self, embedding_size):
+    def __init__(self, embedding_size=100):
         super().__init__()
         self.embedding_size = embedding_size
         self.h1 = nn.Linear(embedding_size * 3, embedding_size)
@@ -105,14 +103,14 @@ class CombinedNet(nn.Module):
 
 
 class TermPolicy(nn.Module):
-    def __init__(self, embedding_size):
+    def __init__(self, embedding_size=100):
         super().__init__()
         self.h1 = nn.Linear(embedding_size, 1)
 
-    def forward(self, x)
+    def forward(self, x):
         x = self.h1(x)
         x = F.sigmoid(x)
-        out_node = torch.binomial(x)
+        out_node = torch.bernoulli(x)
         return out_node
 
 
@@ -123,7 +121,7 @@ class TermPolicy(nn.Module):
 
 
 class UtterancePolicy(nn.Module):
-    def __init__(self, embedding_size, num_tokens=10, max_len=6):
+    def __init__(self, embedding_size=100, num_tokens=11, max_len=6):
         super().__init__()
         # use this to make onehot
         self.eye = torch.eye(num_tokens)
@@ -136,7 +134,7 @@ class UtterancePolicy(nn.Module):
         )
         self.h1 = nn.Linear(embedding_size, num_tokens)
 
-    def forward(self, h_t)
+    def forward(self, h_t):
         state = h_t
         # use first token as the initial dummy token
         last_token = 0
@@ -168,8 +166,10 @@ class ProposalPolicy(nn.Module):
 
 
 class AgentModel(nn.Module):
-    def __init__(self):
+    def __init__(self, enable_comms, enable_proposal):
         super().__init__()
+        self.enable_comms = enable_comms
+        self.enable_proposal = enable_proposal
         self.context_net = ContextNet()
         self.utterance_net = UtteranceNet()
         self.proposal_net = ProposalNet()
@@ -195,12 +195,15 @@ class AgentModel(nn.Module):
         h_t = torch.cat([c_h, m_h, p_h], -1)
         h_t = self.combined_net(h_t)
 
-        term_node = term_policy(h_t)
-        utterance_token_nodes = utterance_policy(h_t)
+        term_node = self.term_policy(h_t)
+        utterance_token_nodes = []
+        if self.enable_comms:
+            utterance_token_nodes = self.utterance_policy(h_t)
         proposal_nodes = []
-        for proposal_policy in self.proposal_policies:
-            proposal_node = proposal_policy(h_t)
-            proposal_nodes.append(proposal_node)
+        if self.enable_proposal:
+            for proposal_policy in self.proposal_policies:
+                proposal_node = self.proposal_policy(h_t)
+                proposal_nodes.append(proposal_node)
         return term_node, utterance_token_nodes, proposal_nodes
 
 
@@ -208,61 +211,96 @@ class Agent(object):
     """
     holds model, optimizer, etc
     """
-    def __init__(self):
-        self.model = AgentModel()
+    def __init__(self, enable_comms, enable_proposal):
+        self.enable_comms = enable_comms
+        self.enable_proposal = enable_proposal
+        self.model = AgentModel(
+            enable_comms=enable_comms,
+            enable_proposal=enable_proposal)
         self.opt = optim.Adam(params=self.model.parameters())
 
 
 def run_episode(
-        enable_proposal, enable_comms, prosocial,
-        context_net, proposal_net, utterance_net,
-        combined_net,
-        term_policy, utterance_policy):
+        prosocial,
+        agent_models,
+        agent_opts):
+        # enable_proposal, enable_comms, prosocial,
+        # context_net, proposal_net, utterance_net,
+        # combined_net,
+        # term_policy, utterance_policy):
     N = sample_N()
     pool = sample_items()
-    utilities = torch.zeros(2, 3)
+    utilities = torch.zeros(2, 3).long()
     utilities[0] = sample_utility()
     utilities[1] = sample_utility()
-    last_proposal = None
-    m_prev = torch.zeros(1)
-    p_prev = torch.zeros(3)
-    agent_models = [AgentModel(), AgentModel()]
+    last_proposal = torch.zeros(3).long()
+    m_prev = torch.zeros(1).long()
+    p_prev = torch.zeros(3).long()
     for t in range(N):
         agent = 1 if t % 2 else 0
-        utility = utilities[i]
+        utility = utilities[agent]
+        print('type(pool)', type(pool))
+        print('type(utility)', type(utility))
         c = torch.cat([pool, utility]).view(1, -1)
         agent_model = agent_models[agent]
         term_node, utterance_nodes, proposal_nodes = agent_model(
             context=Variable(c),
-            m_prev=Variable(m_prev),
-            p_prev=Variable(p_prev)
+            m_prev=Variable(m_prev.view(1, -1)),
+            p_prev=Variable(p_prev.view(1, -1))
         )
+        print('term_node.data[0][0]', term_node.data[0][0])
+        if term_node.data[0][0]:
+            break
+        else:
+            print('proposal_nodes[0]', proposal_nodes[0])
+            last_proposal = torch.zeros([
+                proposal_nodes[0].data[0][0],
+                proposal_nodes[1].data[0][0],
+                proposal_nodes[2].data[0][0],
+            ])
+    rewards = [None, None]
+    # so, lets say agent is 1, means the previous proposal was
+    # by agent 0
+    proposing_agent = 1 - agent
+    rewards[proposing_agent] = utilities[proposing_agent].dot(last_proposal)
+    rewards[agent] = utilities[agent].dot(pool - last_proposal)
+    print('rewards', rewards)
 
 
-def run(enable_proposal, enable_comms, seed, N, prosocial):
+def run(enable_proposal, enable_comms, seed, prosocial):
     if seed is not None:
         np.random.seed(seed)
         torch.manual_seed(seed)
     episode = 0
-    uv = [None, None]
-    context_net = ContextNet()
-    utterance_net = UtteranceNet()
-    proposal_net = ProposalNet()
-    combined_net = CombinedNet()
-    proposal_net.embedding = context_net.embedding
-    utterance_policy = UtterancePolicy()
-    term_policy = TermPolicy()
+    agent_models = []
+    agent_opts = []
+    for i in range(2):
+        agent_models.append(AgentModel(
+            enable_comms=enable_comms,
+            enable_proposal=enable_proposal))
+        agent_opts.append(optim.Adam(params=agent_models[i].parameters()))
+    # uv = [None, None]
+    # context_net = ContextNet()
+    # utterance_net = UtteranceNet()
+    # proposal_net = ProposalNet()
+    # combined_net = CombinedNet()
+    # proposal_net.embedding = context_net.embedding
+    # utterance_policy = UtterancePolicy()
+    # term_policy = TermPolicy()
     while True:
         run_episode(
-            enable_proposal=enable_proposal, enable_comms=enable_comms, prosocial=prosocial,
-            context_net=context_net, proposal_net=proposal_net, utterance_net=utterance_net,
-            combined_net=combined_net,
-            utterance_policy=utterance_policy, term_policy=term_policy)
+            agent_models=agent_models,
+            agent_opts=agent_opts,
+            prosocial=prosocial)
+            # enable_proposal=enable_proposal, enable_comms=enable_comms, prosocial=prosocial,
+            # context_net=context_net, proposal_net=proposal_net, utterance_net=utterance_net,
+            # combined_net=combined_net,
+            # utterance_policy=utterance_policy, term_policy=term_policy)
         episode += 1
 
 
 if __name__ == '__main__':
-    parser = arpgarse.ArgumentParser()
+    parser = argparse.ArgumentParser()
     # parser.add_argument('--N', type=int, default=20)
     parser.add_argument('--seed', type=int, help='optional')
     parser.add_argument('--enable-proposal', action='store_true')
