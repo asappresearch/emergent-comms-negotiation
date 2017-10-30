@@ -39,9 +39,9 @@ class ContextNet(nn.Module):
             num_layers=1)
 
     def forward(self, x):
-        print('type(x)', type(x))
-        print('x.size()', x.size())
-        print('x', x)
+        # print('type(x)', type(x))
+        # print('x.size()', x.size())
+        # print('x', x)
         x = self.embedding(x)
         x = x.view(-1, 1, self.embedding_size)
         state = Variable(torch.zeros(1, 1, self.embedding_size))
@@ -116,7 +116,7 @@ class UtterancePolicy(nn.Module):
     def __init__(self, embedding_size=100, num_tokens=11, max_len=6):
         super().__init__()
         # use this to make onehot
-        self.eye = torch.eye(num_tokens)
+        self.onehot = torch.eye(num_tokens)
         self.num_tokens = num_tokens
         self.max_len = max_len
         self.lstm = nn.GRU(
@@ -127,13 +127,15 @@ class UtterancePolicy(nn.Module):
         self.h1 = nn.Linear(embedding_size, num_tokens)
 
     def forward(self, h_t):
-        state = h_t
+        state = h_t.view(1, 1, -1)
         # use first token as the initial dummy token
         last_token = 0
         tokens = []
         # use last token of vocab as end-of-utterance
         while last_token != self.num_tokens - 1 and len(tokens) < self.max_len:
-            token_onehot = self.eye(last_token).view(1, 1, -1)
+            token_onehot = self.onehot[last_token].view(1, 1, -1)
+            # print('token_onehot.size()', token_onehot.size())
+            # print('state.size()', state.size())
             out, state = self.lstm(Variable(token_onehot), state)
             out = self.h1(out)
             out = F.softmax(out)
@@ -178,7 +180,6 @@ class AgentModel(nn.Module):
             # do this so it registers its parameters:
             self.__setattr__('policy%s' % i, proposal_policy)
 
-
     def forward(self, context, m_prev, p_prev):
         c_h = self.context_net(context)
         m_h = self.utterance_net(m_prev)
@@ -194,7 +195,7 @@ class AgentModel(nn.Module):
         proposal_nodes = []
         if self.enable_proposal:
             for proposal_policy in self.proposal_policies:
-                proposal_node = self.proposal_policy(h_t)
+                proposal_node = proposal_policy(h_t)
                 proposal_nodes.append(proposal_node)
         return term_node, utterance_token_nodes, proposal_nodes
 
@@ -227,8 +228,8 @@ def run_episode(
     for t in range(N):
         agent = 1 if t % 2 else 0
         utility = utilities[agent]
-        print('type(pool)', type(pool))
-        print('type(utility)', type(utility))
+        # print('type(pool)', type(pool))
+        # print('type(utility)', type(utility))
         c = torch.cat([pool, utility]).view(1, -1)
         agent_model = agent_models[agent]
         term_node, utterance_nodes, proposal_nodes = agent_model(
@@ -236,12 +237,13 @@ def run_episode(
             m_prev=Variable(m_prev.view(1, -1)),
             p_prev=Variable(p_prev.view(1, -1))
         )
-        print('term_node.data[0][0]', term_node.data[0][0])
+        # print('term_node.data[0][0]', term_node.data[0][0])
         if term_node.data[0][0]:
             break
         else:
-            print('proposal_nodes[0]', proposal_nodes[0])
-            last_proposal = torch.zeros([
+            # print('proposal_nodes', proposal_nodes)
+            # print('proposal_nodes[0]', proposal_nodes[0])
+            last_proposal = torch.LongTensor([
                 proposal_nodes[0].data[0][0],
                 proposal_nodes[1].data[0][0],
                 proposal_nodes[2].data[0][0],
@@ -250,6 +252,8 @@ def run_episode(
     # so, lets say agent is 1, means the previous proposal was
     # by agent 0
     proposing_agent = 1 - agent
+    # print('utilities[proposing_agent]', utilities[proposing_agent])
+    # print('last_proposal', last_proposal)
     rewards[proposing_agent] = utilities[proposing_agent].dot(last_proposal)
     rewards[agent] = utilities[agent].dot(pool - last_proposal)
     print('rewards', rewards)
@@ -278,8 +282,12 @@ def run(enable_proposal, enable_comms, seed, prosocial):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--seed', type=int, help='optional')
-    parser.add_argument('--enable-proposal', action='store_true')
-    parser.add_argument('--enable-comms', action='store_true')
+    parser.add_argument('--disable-proposal', action='store_true')
+    parser.add_argument('--disable-comms', action='store_true')
     parser.add_argument('--prosocial', action='store_true')
     args = parser.parse_args()
+    args.enable_comms = not args.disable_comms
+    args.enable_proposal = not args.disable_proposal
+    del args.__dict__['disable_comms']
+    del args.__dict__['disable_proposal']
     run(**args.__dict__)
