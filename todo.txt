@@ -1,10 +1,10 @@
 - add baselining control variate
 - add entropy regularization
-- invalid proposals should cause reward 0 ...
-- if no termination, then reward 0
-- save model
 
 done:
 - add reward
 - add backprop
 - add logging + draw graph
+- load/save model
+- invalid proposals should cause reward 0 ...
+- if no termination, then reward 0

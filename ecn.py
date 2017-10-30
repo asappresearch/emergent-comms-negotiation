@@ -236,6 +236,7 @@ def run_episode(
         for i in range(2):
             print(' %s,%s,%s' % (utilities[i][0], utilities[i][2], utilities[i][2]), end='')
         print('')
+    terminated_ok = False
     for t in range(N):
         agent = 1 if t % 2 else 0
         utility = utilities[agent]
@@ -257,6 +258,7 @@ def run_episode(
                 proposal_nodes[2].data[0][0]
             ))
         if term_node.data[0][0]:
+            terminated_ok = True
             break
         else:
             last_proposal = torch.LongTensor([
@@ -264,28 +266,43 @@ def run_episode(
                 proposal_nodes[1].data[0][0],
                 proposal_nodes[2].data[0][0],
             ])
-    rewards = [None, None]
+    rewards = [0, 0]
     # so, lets say agent is 1, means the previous proposal was
     # by agent 0
     proposing_agent = 1 - agent
     # cap last proposal by pool size
-    last_proposal = torch.min(pool, last_proposal)
-    rewards[proposing_agent] = utilities[proposing_agent].dot(last_proposal)
-    rewards[agent] = utilities[agent].dot(pool - last_proposal)
-    if prosocial:
-        total_actual_reward = np.sum(rewards)
-        max_utility = torch.max(*utilities)
-        total_possible_reward = max_utility.dot(pool)
-        scaled_reward = 0
-        if total_possible_reward != 0:
-            scaled_reward = total_actual_reward / total_possible_reward
-        rewards[0] = scaled_reward
-        rewards[1] = scaled_reward
-    else:
-        for i in range(2):
-            max_possible = utilities[i].dot(pool)
-            if max_possible != 0:
-                rewards[i] /= max_possible
+    exceeded_pool = False
+    # if render:
+    #     print(last_proposal, torch.min(pool, last_proposal))
+    if t == 0:
+        terminated_ok = False
+    if (last_proposal - torch.min(pool, last_proposal)).sum() != 0:
+        exceeded_pool = True
+    if render:
+        print('term ok %s exceeded_pool %s' % (terminated_ok, exceeded_pool))
+    if not exceeded_pool and terminated_ok:
+        rewards[proposing_agent] = utilities[proposing_agent].dot(last_proposal)
+        rewards[agent] = utilities[agent].dot(pool - last_proposal)
+        if prosocial:
+            total_actual_reward = np.sum(rewards)
+            max_utility = torch.max(*utilities)
+            total_possible_reward = max_utility.dot(pool)
+            # if render:
+            #     print('rewards', rewards)
+            #     print('utilities', utilities)
+            #     print('max_utility', max_utility)
+            #     print('total_actual_reward %s total_possible_reward %s' (
+            #         total_actual_reward, total_possible_reward))
+            scaled_reward = 0
+            if total_possible_reward != 0:
+                scaled_reward = total_actual_reward / total_possible_reward
+            rewards[0] = scaled_reward
+            rewards[1] = scaled_reward
+        else:
+            for i in range(2):
+                max_possible = utilities[i].dot(pool)
+                if max_possible != 0:
+                    rewards[i] /= max_possible
     if render:
         print('  reward: %.1f,%.1f' % (rewards[0], rewards[1]))
     return nodes_by_agent, rewards
