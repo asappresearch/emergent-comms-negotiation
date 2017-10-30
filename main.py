@@ -65,7 +65,6 @@ class UtteranceNet(nn.Module):
     def forward(self, x):
         x = self.embedding(x)
         x = x.view(-1, 1, self.embedding_size)
-        # x = self.lstm(x)
         state = Variable(torch.zeros(1, 1, self.embedding_size))
         x, state = self.lstm(x, state)
         return state[0].view(1, -1)
@@ -84,7 +83,6 @@ class ProposalNet(nn.Module):
     def forward(self, x):
         x = self.embedding(x)
         x = x.view(-1, 1, self.embedding_size)
-        # x = self.lstm(x)
         state = Variable(torch.zeros(1, 1, self.embedding_size))
         x, state = self.lstm(x, state)
         return state[0].view(1, -1)
@@ -112,12 +110,6 @@ class TermPolicy(nn.Module):
         x = F.sigmoid(x)
         out_node = torch.bernoulli(x)
         return out_node
-
-
-# def make_onehot(value, K):
-#     res = torch.zeros(1, K)
-#     res[value] = 1
-#     return res
 
 
 class UtterancePolicy(nn.Module):
@@ -224,10 +216,6 @@ def run_episode(
         prosocial,
         agent_models,
         agent_opts):
-        # enable_proposal, enable_comms, prosocial,
-        # context_net, proposal_net, utterance_net,
-        # combined_net,
-        # term_policy, utterance_policy):
     N = sample_N()
     pool = sample_items()
     utilities = torch.zeros(2, 3).long()
@@ -279,29 +267,16 @@ def run(enable_proposal, enable_comms, seed, prosocial):
             enable_comms=enable_comms,
             enable_proposal=enable_proposal))
         agent_opts.append(optim.Adam(params=agent_models[i].parameters()))
-    # uv = [None, None]
-    # context_net = ContextNet()
-    # utterance_net = UtteranceNet()
-    # proposal_net = ProposalNet()
-    # combined_net = CombinedNet()
-    # proposal_net.embedding = context_net.embedding
-    # utterance_policy = UtterancePolicy()
-    # term_policy = TermPolicy()
     while True:
         run_episode(
             agent_models=agent_models,
             agent_opts=agent_opts,
             prosocial=prosocial)
-            # enable_proposal=enable_proposal, enable_comms=enable_comms, prosocial=prosocial,
-            # context_net=context_net, proposal_net=proposal_net, utterance_net=utterance_net,
-            # combined_net=combined_net,
-            # utterance_policy=utterance_policy, term_policy=term_policy)
         episode += 1
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    # parser.add_argument('--N', type=int, default=20)
     parser.add_argument('--seed', type=int, help='optional')
     parser.add_argument('--enable-proposal', action='store_true')
     parser.add_argument('--enable-comms', action='store_true')
