@@ -214,7 +214,8 @@ class Agent(object):
 
 def run_episode(
         prosocial,
-        agent_models):
+        agent_models,
+        render=False):
     N = sample_N()
     pool = sample_items()
     utilities = torch.zeros(2, 3).long()
@@ -224,6 +225,13 @@ def run_episode(
     m_prev = torch.zeros(1).long()
     p_prev = torch.zeros(3).long()
     nodes_by_agent = [[], []]
+    if render:
+        print('  N=%s' % N, end='')
+        print(' pool: %s,%s,%s' % (pool[0], pool[1], pool[2]), end='')
+        print(' util:', end='')
+        for i in range(2):
+            print(' %s,%s,%s' % (utilities[i][0], utilities[i][2], utilities[i][2]), end='')
+        print('')
     for t in range(N):
         agent = 1 if t % 2 else 0
         utility = utilities[agent]
@@ -234,13 +242,16 @@ def run_episode(
             m_prev=Variable(m_prev.view(1, -1)),
             p_prev=Variable(p_prev.view(1, -1))
         )
-        # print('type(term_node.data)', type(term_node.data))
         nodes_by_agent[agent].append(term_node)
-        # print('term_node', term_node)
         nodes_by_agent[agent] += utterance_nodes
-        # print('utterance_nodes', utterance_nodes)
-        # print('proposal_nodes', proposal_nodes)
         nodes_by_agent[agent] += proposal_nodes
+        if render:
+            print('  t %s term=%s' % (t, term_node.data[0][0]), end='')
+            print(' prop %s,%s,%s' % (
+                proposal_nodes[0].data[0][0],
+                proposal_nodes[1].data[0][0],
+                proposal_nodes[2].data[0][0]
+            ))
         if term_node.data[0][0]:
             break
         else:
@@ -269,6 +280,8 @@ def run_episode(
             max_possible = utilities[i].dot(pool)
             if max_possible != 0:
                 rewards[i] /= max_possible
+    if render:
+        print('  reward: %.1f,%.1f' % (rewards[0], rewards[1]))
     return nodes_by_agent, rewards
 
 
@@ -288,30 +301,23 @@ def run(enable_proposal, enable_comms, seed, prosocial):
     rewards_sum = [0, 0]
     count_sum = 0
     while True:
+        render = time.time() - last_print >= 3.0
         nodes_by_agent, rewards = run_episode(
             agent_models=agent_models,
-            # agent_opts=agent_opts,
-            prosocial=prosocial)
-        # print('nodes_by_agent', nodes_by_agent)
+            prosocial=prosocial,
+            render=render)
         for i in range(2):
             if len(nodes_by_agent[i]) == 0:
                 continue
-            # print('--- learn agent %s ---' % i)
             rewards_sum[i] += rewards[i]
             reward = rewards[i]
             for node in nodes_by_agent[i]:
-                # print('reward', reward)
                 node.reinforce(reward)
             agent_opts[i].zero_grad()
-            # print('nodes_by_agent[i]', nodes_by_agent[i])
-            # for node in nodes_by_agent[i]:
-            #     print('node', node, 'requires grad', node.requires_grad)
             autograd.backward(nodes_by_agent[i], [None] * len(nodes_by_agent[i]))
             agent_opts[i].step()
-            # print('')
-        # asdasdf
         count_sum += 1
-        if time.time() - last_print >= 3.0:
+        if render:
             print('episode %s avg rewards %.1f %.1f' % (
                 episode, rewards_sum[0] / count_sum, rewards_sum[1] / count_sum))
             last_print = time.time()
