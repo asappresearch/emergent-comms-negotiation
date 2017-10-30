@@ -264,6 +264,8 @@ def run_episode(
     # so, lets say agent is 1, means the previous proposal was
     # by agent 0
     proposing_agent = 1 - agent
+    # cap last proposal by pool size
+    last_proposal = torch.min(pool, last_proposal)
     rewards[proposing_agent] = utilities[proposing_agent].dot(last_proposal)
     rewards[agent] = utilities[agent].dot(pool - last_proposal)
     if prosocial:
