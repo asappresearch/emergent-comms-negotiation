@@ -39,9 +39,6 @@ class ContextNet(nn.Module):
             num_layers=1)
 
     def forward(self, x):
-        # print('type(x)', type(x))
-        # print('x.size()', x.size())
-        # print('x', x)
         x = self.embedding(x)
         x = x.view(-1, 1, self.embedding_size)
         state = Variable(torch.zeros(1, 1, self.embedding_size))
@@ -134,8 +131,6 @@ class UtterancePolicy(nn.Module):
         # use last token of vocab as end-of-utterance
         while last_token != self.num_tokens - 1 and len(tokens) < self.max_len:
             token_onehot = self.onehot[last_token].view(1, 1, -1)
-            # print('token_onehot.size()', token_onehot.size())
-            # print('state.size()', state.size())
             out, state = self.lstm(Variable(token_onehot), state)
             out = self.h1(out)
             out = F.softmax(out)
@@ -225,11 +220,10 @@ def run_episode(
     last_proposal = torch.zeros(3).long()
     m_prev = torch.zeros(1).long()
     p_prev = torch.zeros(3).long()
+    nodes_by_agent = [[], []]
     for t in range(N):
         agent = 1 if t % 2 else 0
         utility = utilities[agent]
-        # print('type(pool)', type(pool))
-        # print('type(utility)', type(utility))
         c = torch.cat([pool, utility]).view(1, -1)
         agent_model = agent_models[agent]
         term_node, utterance_nodes, proposal_nodes = agent_model(
@@ -237,12 +231,12 @@ def run_episode(
             m_prev=Variable(m_prev.view(1, -1)),
             p_prev=Variable(p_prev.view(1, -1))
         )
-        # print('term_node.data[0][0]', term_node.data[0][0])
+        nodes_by_agent[agent].append(term_node)
+        nodes_by_agent[agent] += utterance_nodes
+        nodes_by_agent[agent] += proposal_nodes
         if term_node.data[0][0]:
             break
         else:
-            # print('proposal_nodes', proposal_nodes)
-            # print('proposal_nodes[0]', proposal_nodes[0])
             last_proposal = torch.LongTensor([
                 proposal_nodes[0].data[0][0],
                 proposal_nodes[1].data[0][0],
@@ -252,11 +246,22 @@ def run_episode(
     # so, lets say agent is 1, means the previous proposal was
     # by agent 0
     proposing_agent = 1 - agent
-    # print('utilities[proposing_agent]', utilities[proposing_agent])
-    # print('last_proposal', last_proposal)
     rewards[proposing_agent] = utilities[proposing_agent].dot(last_proposal)
     rewards[agent] = utilities[agent].dot(pool - last_proposal)
-    print('rewards', rewards)
+    if prosocial:
+        total_actual_reward = np.sum(rewards)
+        max_utility = torch.max(*utilities)
+        total_possible_reward = max_utility.dot(pool)
+        scaled_reward = 0
+        if total_possible_reward != 0:
+            scaled_reward = total_actual_reward / total_possible_reward
+        rewards[0] = scaled_reward
+        rewards[1] = scaled_reward
+    else:
+        for i in range(2):
+            max_possible = utilities[i].dot(pool)
+            if max_possible != 0:
+                rewards[i] /= max_possible
 
 
 def run(enable_proposal, enable_comms, seed, prosocial):
@@ -284,10 +289,12 @@ if __name__ == '__main__':
     parser.add_argument('--seed', type=int, help='optional')
     parser.add_argument('--disable-proposal', action='store_true')
     parser.add_argument('--disable-comms', action='store_true')
-    parser.add_argument('--prosocial', action='store_true')
+    parser.add_argument('--disable-prosocial', action='store_true')
     args = parser.parse_args()
     args.enable_comms = not args.disable_comms
     args.enable_proposal = not args.disable_proposal
+    args.prosocial = not args.disable_prosocial
     del args.__dict__['disable_comms']
     del args.__dict__['disable_proposal']
+    del args.__dict__['disable_prosocial']
     run(**args.__dict__)
