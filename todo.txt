@@ -1,0 +1,4 @@
+- add reward
+- add backprop
+- add entropy regularization
+- train :)
