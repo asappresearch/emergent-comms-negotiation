@@ -348,6 +348,7 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file):
         'seed': seed
     }))
     last_save = time.time()
+    baseline = 0
     while True:
         render = time.time() - last_print >= 3.0
         nodes_by_agent, rewards = run_episode(
@@ -360,14 +361,15 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file):
             rewards_sum[i] += rewards[i]
             reward = rewards[i]
             for node in nodes_by_agent[i]:
-                node.reinforce(reward)
+                node.reinforce(reward - baseline)
             agent_opts[i].zero_grad()
             autograd.backward(nodes_by_agent[i], [None] * len(nodes_by_agent[i]))
             agent_opts[i].step()
+        baseline = 0.7 * baseline + 0.3 * (np.mean(rewards))
         count_sum += 1
         if render:
-            print('episode %s avg rewards %.1f %.1f' % (
-                episode, rewards_sum[0] / count_sum, rewards_sum[1] / count_sum))
+            print('episode %s avg rewards %.1f %.1f b=%.1f' % (
+                episode, rewards_sum[0] / count_sum, rewards_sum[1] / count_sum, baseline))
             f_log.write(json.dumps({
                 'episode': episode,
                 'avg_reward_0': rewards_sum[0] / count_sum,
