@@ -1,10 +1,14 @@
+import json
+import time
+import argparse
+import os
+import datetime
+from os import path
+import numpy as np
 import torch
 from torch import autograd, optim, nn
 from torch.autograd import Variable
 import torch.nn.functional as F
-import numpy as np
-import time
-import argparse
 
 
 def sample_items():
@@ -287,7 +291,7 @@ def run_episode(
     return nodes_by_agent, rewards
 
 
-def run(enable_proposal, enable_comms, seed, prosocial):
+def run(enable_proposal, enable_comms, seed, prosocial, logfile):
     if seed is not None:
         np.random.seed(seed)
         torch.manual_seed(seed)
@@ -302,6 +306,15 @@ def run(enable_proposal, enable_comms, seed, prosocial):
     last_print = time.time()
     rewards_sum = [0, 0]
     count_sum = 0
+    if not path.isdir('logs'):
+        os.makedirs('logs')
+    f_log = open(logfile, 'w')
+    f_log.write('meta: %s\n' % json.dumps({
+        'enable_proposal': enable_proposal,
+        'enable_comms': enable_comms,
+        'prosocial': prosocial,
+        'seed': seed
+    }))
     while True:
         render = time.time() - last_print >= 3.0
         nodes_by_agent, rewards = run_episode(
@@ -322,10 +335,17 @@ def run(enable_proposal, enable_comms, seed, prosocial):
         if render:
             print('episode %s avg rewards %.1f %.1f' % (
                 episode, rewards_sum[0] / count_sum, rewards_sum[1] / count_sum))
+            f_log.write(json.dumps({
+                'episode': episode,
+                'avg_reward_0': rewards_sum[0] / count_sum,
+                'avg_reward_1': rewards_sum[1] / count_sum
+            }) + '\n')
+            f_log.flush()
             last_print = time.time()
             rewards_sum = [0, 0]
             count_sum = 0
         episode += 1
+    f_log.close()
 
 
 if __name__ == '__main__':
@@ -334,10 +354,12 @@ if __name__ == '__main__':
     parser.add_argument('--disable-proposal', action='store_true')
     parser.add_argument('--disable-comms', action='store_true')
     parser.add_argument('--disable-prosocial', action='store_true')
+    parser.add_argument('--logfile', type=str, default='logs/log_%Y%m%d_%H%M%S.log')
     args = parser.parse_args()
     args.enable_comms = not args.disable_comms
     args.enable_proposal = not args.disable_proposal
     args.prosocial = not args.disable_prosocial
+    args.logfile = datetime.datetime.strftime(datetime.datetime.now(), args.logfile)
     del args.__dict__['disable_comms']
     del args.__dict__['disable_proposal']
     del args.__dict__['disable_prosocial']
