@@ -291,11 +291,12 @@ def run_episode(
     return nodes_by_agent, rewards
 
 
-def run(enable_proposal, enable_comms, seed, prosocial, logfile):
+def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file):
     if seed is not None:
         np.random.seed(seed)
         torch.manual_seed(seed)
     episode = 0
+    start_time = time.time()
     agent_models = []
     agent_opts = []
     for i in range(2):
@@ -303,11 +304,25 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile):
             enable_comms=enable_comms,
             enable_proposal=enable_proposal))
         agent_opts.append(optim.Adam(params=agent_models[i].parameters()))
+    # print(agent_models[0].state_dict())
+    # asdfasdf
+    if path.isfile(model_file):
+        with open(model_file, 'rb') as f:
+            state = torch.load(f)
+        for i in range(2):
+            agent_models[i].load_state_dict(state['agent%s' % i]['model_state'])
+            agent_opts[i].load_state_dict(state['agent%s' % i]['opt_state'])
+        episode = state['episode']
+        # create a kind of 'virtual' start_time
+        start_time = time.time() - state['elapsed_time']
+        print('loaded model')
+            # agent_opts.append(optim.Adam(params=agent_models[i].parameters()))
     last_print = time.time()
     rewards_sum = [0, 0]
     count_sum = 0
-    if not path.isdir('logs'):
-        os.makedirs('logs')
+    for d in ['logs', 'model_saves']:
+        if not path.isdir(d):
+            os.makedirs(d)
     f_log = open(logfile, 'w')
     f_log.write('meta: %s\n' % json.dumps({
         'enable_proposal': enable_proposal,
@@ -315,6 +330,7 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile):
         'prosocial': prosocial,
         'seed': seed
     }))
+    last_save = time.time()
     while True:
         render = time.time() - last_print >= 3.0
         nodes_by_agent, rewards = run_episode(
@@ -338,18 +354,33 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile):
             f_log.write(json.dumps({
                 'episode': episode,
                 'avg_reward_0': rewards_sum[0] / count_sum,
-                'avg_reward_1': rewards_sum[1] / count_sum
+                'avg_reward_1': rewards_sum[1] / count_sum,
+                'elapsed': time.time() - start_time
             }) + '\n')
             f_log.flush()
             last_print = time.time()
             rewards_sum = [0, 0]
             count_sum = 0
+        if time.time() - last_save >= 5.0:
+            state = {}
+            for i in range(2):
+                state['agent%s' % i] = {}
+                state['agent%s' % i]['model_state'] = agent_models[i].state_dict()
+                state['agent%s' % i]['opt_state'] = agent_opts[i].state_dict()
+            state['episode'] = episode
+            state['elapsed_time'] = time.time() - start_time
+            with open(model_file, 'wb') as f:
+                torch.save(state, f)
+            print('saved model')
+            last_save = time.time()
+
         episode += 1
     f_log.close()
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('--model-file', type=str, default='model_saves/model.dat')
     parser.add_argument('--seed', type=int, help='optional')
     parser.add_argument('--disable-proposal', action='store_true')
     parser.add_argument('--disable-comms', action='store_true')
