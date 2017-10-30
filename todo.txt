@@ -1,6 +1,7 @@
+- add baselining control variate
 - add entropy regularization
-- train :)
 
 done:
 - add reward
 - add backprop
+- add logging + draw graph
