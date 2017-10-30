@@ -105,6 +105,7 @@ class TermPolicy(nn.Module):
     def forward(self, x):
         x = self.h1(x)
         x = F.sigmoid(x)
+        # print('term x.size()', x.size())
         out_node = torch.bernoulli(x)
         return out_node
 
@@ -134,7 +135,10 @@ class UtterancePolicy(nn.Module):
             out, state = self.lstm(Variable(token_onehot), state)
             out = self.h1(out)
             out = F.softmax(out)
-            token_node = torch.multinomial(out)
+            # print('utt out.size()', out.size())
+            # print('out.requires_grad', out.requires_grad)
+            token_node = torch.multinomial(out.view(1, -1))
+            # print('token_node.requires_grad', token_node.requires_grad)
             tokens.append(token_node)
             last_token = token_node.data[0][0]
         return tokens
@@ -210,8 +214,7 @@ class Agent(object):
 
 def run_episode(
         prosocial,
-        agent_models,
-        agent_opts):
+        agent_models):
     N = sample_N()
     pool = sample_items()
     utilities = torch.zeros(2, 3).long()
@@ -231,8 +234,12 @@ def run_episode(
             m_prev=Variable(m_prev.view(1, -1)),
             p_prev=Variable(p_prev.view(1, -1))
         )
+        # print('type(term_node.data)', type(term_node.data))
         nodes_by_agent[agent].append(term_node)
+        # print('term_node', term_node)
         nodes_by_agent[agent] += utterance_nodes
+        # print('utterance_nodes', utterance_nodes)
+        # print('proposal_nodes', proposal_nodes)
         nodes_by_agent[agent] += proposal_nodes
         if term_node.data[0][0]:
             break
@@ -262,6 +269,7 @@ def run_episode(
             max_possible = utilities[i].dot(pool)
             if max_possible != 0:
                 rewards[i] /= max_possible
+    return nodes_by_agent, rewards
 
 
 def run(enable_proposal, enable_comms, seed, prosocial):
@@ -276,11 +284,39 @@ def run(enable_proposal, enable_comms, seed, prosocial):
             enable_comms=enable_comms,
             enable_proposal=enable_proposal))
         agent_opts.append(optim.Adam(params=agent_models[i].parameters()))
+    last_print = time.time()
+    rewards_sum = [0, 0]
+    count_sum = 0
     while True:
-        run_episode(
+        nodes_by_agent, rewards = run_episode(
             agent_models=agent_models,
-            agent_opts=agent_opts,
+            # agent_opts=agent_opts,
             prosocial=prosocial)
+        # print('nodes_by_agent', nodes_by_agent)
+        for i in range(2):
+            if len(nodes_by_agent[i]) == 0:
+                continue
+            # print('--- learn agent %s ---' % i)
+            rewards_sum[i] += rewards[i]
+            reward = rewards[i]
+            for node in nodes_by_agent[i]:
+                # print('reward', reward)
+                node.reinforce(reward)
+            agent_opts[i].zero_grad()
+            # print('nodes_by_agent[i]', nodes_by_agent[i])
+            # for node in nodes_by_agent[i]:
+            #     print('node', node, 'requires grad', node.requires_grad)
+            autograd.backward(nodes_by_agent[i], [None] * len(nodes_by_agent[i]))
+            agent_opts[i].step()
+            # print('')
+        # asdasdf
+        count_sum += 1
+        if time.time() - last_print >= 3.0:
+            print('episode %s avg rewards %.1f %.1f' % (
+                episode, rewards_sum[0] / count_sum, rewards_sum[1] / count_sum))
+            last_print = time.time()
+            rewards_sum = [0, 0]
+            count_sum = 0
         episode += 1
 
 
