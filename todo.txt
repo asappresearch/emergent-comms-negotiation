@@ -1,5 +1,6 @@
 - add baselining control variate
 - add entropy regularization
+- print example utterances/conversations
 
 done:
 - add reward
