@@ -1,7 +1,7 @@
 - add entropy regularization
-- fix gru => lstm
-- remove termination token
-- add batching
+- add forward batching
+- add backward batching
+- check N for forward batching
 - print example utterances/conversations
 
 done:
@@ -12,3 +12,5 @@ done:
 - invalid proposals should cause reward 0 ...
 - if no termination, then reward 0
 - add baselining control variate
+- fix gru => lstm
+- remove termination token

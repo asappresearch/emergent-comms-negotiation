@@ -236,7 +236,7 @@ def run_episode(
     print('WARNIGN DEBUG CODE PRESENT')
 
     # following take not much memory, not fluffed up yet:
-    N = sample_N(batch_size)
+    N = sample_N(batch_size).int()
     pool = sample_items(batch_size)
     utilities = torch.zeros(2, batch_size, 3).long()
     utilities[0] = sample_utility(batch_size)
@@ -244,8 +244,9 @@ def run_episode(
     last_proposal = torch.zeros(batch_size, 3).long()
     m_prev = torch.zeros(batch_size, 6).long()
     p_prev = torch.zeros(batch_size, 3).long()
-    alive = torch.zeros(batch_size).fill_(1)
-    terminated_ok = torch.zeros(batch_size)
+    alive = torch.zeros(batch_size).fill_(1).byte()
+    terminated_ok = torch.zeros(batch_size).byte()
+    rewards = torch.zeros(batch_size)
 
     nodes_by_agent = [[], []]
     if render:
@@ -256,6 +257,12 @@ def run_episode(
             print(' %s,%s,%s' % (utilities[i][0], utilities[i][2], utilities[i][2]), end='')
         print('')
     for t in range(10):
+        # kill any that have reached N
+        # so, lets say N is 2, and t is 2, then we want to kill that games,
+        # but if t is 1, we wouldnt (its the second game)
+        reached_N_idxes = alive & (t >= N)
+        alive[reached_N_idxes] = 0
+
         agent = 1 if t % 2 else 0
         batch_idxes = alive.nonzero().long().view(-1)
         print('batch_idxes', batch_idxes)
@@ -286,17 +293,21 @@ def run_episode(
                 proposal_nodes_batch[2].data[0][0]
             ))
 
-        alive[batch_idxes] = 1 - term_node_batch.data.view(batch_size)
-        terminated_ok[batch_idxes] = term_node_batch.data.view(batch_size)
+        alive[batch_idxes] = (1 - term_node_batch.data.view(batch_size)).byte()
+        terminated_ok[batch_idxes] = term_node_batch.data.view(batch_size).byte()
 
         local_still_alive_idexes = (1 - term_node_batch.data.view(batch_size)).nonzero().long().view(-1)
         if len(local_still_alive_idexes.size()) > 0 and local_still_alive_idexes.size()[0] > 0:
+            # update last_proposal
             this_proposal = torch.LongTensor(batch_size, 3)
             for p in range(3):
                 this_proposal[:, p] = proposal_nodes_batch[p].data
             last_proposal_indexes = batch_idxes[local_still_alive_idexes]
             last_proposal[last_proposal_indexes] = this_proposal[local_still_alive_idexes]
-        else:
+
+        # calcualate rewards for any that just finished
+
+        if len(local_still_alive_idexes.size()) == 0 or local_still_alive_idexes.size()[0] == 0:
             # all games finished
             break
 
