@@ -44,9 +44,9 @@ class ContextNet(nn.Module):
             num_layers=1)
 
     def forward(self, x):
-        print('ContextNet x.size()', x.size())
+        # print('ContextNet x.size()', x.size())
         batch_size = x.size()[0]
-        print('batch_size', batch_size)
+        # print('batch_size', batch_size)
         x = self.embedding(x)
         x = x.view(-1, batch_size, self.embedding_size)
         state = (
@@ -54,7 +54,7 @@ class ContextNet(nn.Module):
             Variable(torch.zeros(1, batch_size, self.embedding_size))
         )
         x, state = self.lstm(x, state)
-        print('state[0].size()', state[0].size())
+        # print('state[0].size()', state[0].size())
         return state[0].view(batch_size, self.embedding_size)
 
 
@@ -72,9 +72,9 @@ class UtteranceNet(nn.Module):
             num_layers=1)
 
     def forward(self, x):
-        print('UtteranceNet x.size()', x.size())
+        # print('UtteranceNet x.size()', x.size())
         batch_size = x.size()[0]
-        print('batch_size', batch_size)
+        # print('batch_size', batch_size)
         x = self.embedding(x)
         x = x.view(-1, batch_size, self.embedding_size)
         # state = Variable(torch.zeros(1, 1, self.embedding_size))
@@ -82,7 +82,7 @@ class UtteranceNet(nn.Module):
             Variable(torch.zeros(1, 1, self.embedding_size)),
             Variable(torch.zeros(1, 1, self.embedding_size)))
         x, state = self.lstm(x, state)
-        print('state[0].size()', state[0].size())
+        # print('state[0].size()', state[0].size())
         return state[0].view(batch_size, self.embedding_size)
 
 
@@ -97,9 +97,9 @@ class ProposalNet(nn.Module):
             num_layers=1)
 
     def forward(self, x):
-        print('ProposalNet x.size()', x.size())
+        # print('ProposalNet x.size()', x.size())
         batch_size = x.size()[0]
-        print('batch_size', batch_size)
+        # print('batch_size', batch_size)
         x = self.embedding(x)
         x = x.view(-1, batch_size, self.embedding_size)
         state = (
@@ -107,7 +107,7 @@ class ProposalNet(nn.Module):
             Variable(torch.zeros(1, batch_size, self.embedding_size)))
         # state = Variable(torch.zeros(1, 1, self.embedding_size))
         x, state = self.lstm(x, state)
-        print('state[0].size()', state[0].size())
+        # print('state[0].size()', state[0].size())
         return state[0].view(batch_size, self.embedding_size)
 
 
@@ -152,7 +152,7 @@ class UtterancePolicy(nn.Module):
         self.h1 = nn.Linear(embedding_size, num_tokens)
 
     def forward(self, h_t):
-        print('h_t.size()', h_t.size())
+        # print('h_t.size()', h_t.size())
         batch_size = h_t.size()[0]
 
         state = (
@@ -165,19 +165,19 @@ class UtterancePolicy(nn.Module):
         tokens = []
         while len(tokens) < self.max_len:
             token_onehot = self.onehot[last_token]
-            print('token_onehot.size()', token_onehot.size())
+            # print('token_onehot.size()', token_onehot.size())
             token_onehot = token_onehot.view(1, batch_size, self.num_tokens)
-            print('token_onehot.size()', token_onehot.size())
+            # print('token_onehot.size()', token_onehot.size())
             out, state = self.lstm(Variable(token_onehot), state)
             out = self.h1(out)
             out = F.softmax(out)
-            print('out.size()', out.size())
+            # print('out.size()', out.size())
             token_node = torch.multinomial(out.view(batch_size, self.num_tokens))
             # token_node = torch.multinomial(out)
             tokens.append(token_node)
-            print('token_node.data.size()', token_node.data.size())
+            # print('token_node.data.size()', token_node.data.size())
             last_token = token_node.data.view(batch_size)
-            print('last_token', last_token)
+            # print('last_token', last_token)
         return tokens
 
 
@@ -221,13 +221,13 @@ class AgentModel(nn.Module):
         m_h = self.utterance_net(m_prev)
         p_h = self.proposal_net(p_prev)
 
-        print('c_h.size()', c_h.size())
-        print('m_h.size()', m_h.size())
-        print('p_h.size()', p_h.size())
+        # print('c_h.size()', c_h.size())
+        # print('m_h.size()', m_h.size())
+        # print('p_h.size()', p_h.size())
         h_t = torch.cat([c_h, m_h, p_h], -1)
-        print('h_t.size()', h_t.size())
+        # print('h_t.size()', h_t.size())
         h_t = self.combined_net(h_t)
-        print('h_t.size()', h_t.size())
+        # print('h_t.size()', h_t.size())
 
         term_node = self.term_policy(h_t)
         utterance_token_nodes = []
@@ -259,7 +259,9 @@ def run_episode(
         agent_models,
         batch_size=128,
         render=False):
-    batch_size = 4
+    batch_size = 5
+    print('WARNIGN DEBUG CODE PRESENT')
+
     # following take not much memory, not fluffed up yet:
     N = sample_N(batch_size)
     pool = sample_items(batch_size)
@@ -272,6 +274,9 @@ def run_episode(
     alive = torch.zeros(batch_size).fill_(1)
     terminated_ok = torch.zeros(batch_size)
 
+    alive[1] = 0  # TODO REMOVE THIS DEUBGGING
+    print('WARNIGN DEBUG CODE PRESENT')
+
     nodes_by_agent = [[], []]
     if render:
         print('  N=%s' % N, end='')
@@ -283,6 +288,9 @@ def run_episode(
     for t in range(10):
         agent = 1 if t % 2 else 0
         batch_idxes = alive.nonzero().long().view(-1)
+        print('batch_idxes', batch_idxes)
+        batch_size = batch_idxes.size()[0]
+        print('batch_size', batch_size)
         N_batch = N[batch_idxes]
         pool_batch = pool[batch_idxes]
         utility_batch = utilities[agent][batch_idxes]
@@ -290,13 +298,13 @@ def run_episode(
         m_prev_batch = m_prev[batch_idxes]
         p_prev_batch = p_prev[batch_idxes]
 
-        print('pool_batch.size()', pool_batch.size())
-        print('utility_batch.size()', utility_batch.size())
+        # print('pool_batch.size()', pool_batch.size())
+        # print('utility_batch.size()', utility_batch.size())
         c_batch = torch.cat([pool_batch, utility_batch], 1)
-        print('c_batch.size()', c_batch.size())
+        # print('c_batch.size()', c_batch.size())
         agent_model = agent_models[agent]
-        print('m_prev_batch.size()', m_prev_batch.size())
-        print('p_prev_batch.size()', p_prev_batch.size())
+        # print('m_prev_batch.size()', m_prev_batch.size())
+        # print('p_prev_batch.size()', p_prev_batch.size())
         term_node_batch, utterance_nodes_batch, proposal_nodes_batch = agent_model(
             context=Variable(c_batch),
             m_prev=Variable(m_prev_batch),
@@ -312,15 +320,38 @@ def run_episode(
                 proposal_nodes_batch[1].data[0][0],
                 proposal_nodes_batch[2].data[0][0]
             ))
-        print('term_node_batch.data.size()', term_node_batch.data.size())
+        # print('term_node_batch.data.size()', term_node_batch.data.size())
         print('term_node_batch.data', term_node_batch.data)
-        alive[batch_idxes] = term_node_batch.data
+        alive[batch_idxes] = 1 - term_node_batch.data.view(batch_size)
         print('alive', alive)
-        adfasdf
 
-        terminated_now = not terminated and term_node.data[:, 0]
-        terminated_ok = terminated_ok | terminated_now
-        asdfasd
+        terminated_ok[batch_idxes] = term_node_batch.data.view(batch_size)
+        print('terminated_ok', terminated_ok)
+
+        print('last_proposal', last_proposal)
+        local_still_alive_idexes = (1 - term_node_batch.data.view(batch_size)).nonzero().long().view(-1)
+        print('local_still_alive_idexes', local_still_alive_idexes)
+        this_proposal = torch.LongTensor(batch_size, 3)
+        print('proposal_nodes_batch[0].size()', proposal_nodes_batch[0].size())
+        for p in range(3):
+            this_proposal[:, p] = proposal_nodes_batch[p].data
+        print('this_proposal', this_proposal)
+        # this_proposal[:, 0] = proposal_nodes_batch[0].data
+        # print('last_proposal[batch_idxes].view(batch_size, -1)[local_still_alive_idexes]', last_proposal[batch_idxes].view(batch_size, -1)[local_still_alive_idexes])
+        # print('this_proposal[local_still_alive_idexes]', this_proposal[local_still_alive_idexes])
+        last_proposal_indexes = batch_idxes[local_still_alive_idexes]
+        print('last_proposal_indexes', last_proposal_indexes)
+        # last_proposal_view = last_proposal[batch_idxes]
+        # last_proposal_view = last_proposal[batch_idxes].view(batch_size, -1)
+        # last_proposal[last_proposal_indexes] = 5
+        # print('last_proposal_view', last_proposal_view)
+        print('last_proposal', last_proposal)
+        # last_proposal[batch_idxes].view(batch_size, -1)[local_still_alive_idexes] = this_proposal[local_still_alive_idexes]
+        last_proposal[last_proposal_indexes] = this_proposal[local_still_alive_idexes]
+        print('last_proposal', last_proposal)
+        asdfasdf
+        # global_still_alive_idexes = alive.nonzero().long()
+        # print('global_still_alive_idexes', global_still_alive_idexes)
         if term_node.data[0][0]:
             terminated_ok = True
             break
