@@ -320,47 +320,22 @@ def run_episode(
                 proposal_nodes_batch[1].data[0][0],
                 proposal_nodes_batch[2].data[0][0]
             ))
-        # print('term_node_batch.data.size()', term_node_batch.data.size())
-        print('term_node_batch.data', term_node_batch.data)
+
         alive[batch_idxes] = 1 - term_node_batch.data.view(batch_size)
-        print('alive', alive)
-
         terminated_ok[batch_idxes] = term_node_batch.data.view(batch_size)
-        print('terminated_ok', terminated_ok)
 
-        print('last_proposal', last_proposal)
         local_still_alive_idexes = (1 - term_node_batch.data.view(batch_size)).nonzero().long().view(-1)
-        print('local_still_alive_idexes', local_still_alive_idexes)
-        this_proposal = torch.LongTensor(batch_size, 3)
-        print('proposal_nodes_batch[0].size()', proposal_nodes_batch[0].size())
-        for p in range(3):
-            this_proposal[:, p] = proposal_nodes_batch[p].data
-        print('this_proposal', this_proposal)
-        # this_proposal[:, 0] = proposal_nodes_batch[0].data
-        # print('last_proposal[batch_idxes].view(batch_size, -1)[local_still_alive_idexes]', last_proposal[batch_idxes].view(batch_size, -1)[local_still_alive_idexes])
-        # print('this_proposal[local_still_alive_idexes]', this_proposal[local_still_alive_idexes])
-        last_proposal_indexes = batch_idxes[local_still_alive_idexes]
-        print('last_proposal_indexes', last_proposal_indexes)
-        # last_proposal_view = last_proposal[batch_idxes]
-        # last_proposal_view = last_proposal[batch_idxes].view(batch_size, -1)
-        # last_proposal[last_proposal_indexes] = 5
-        # print('last_proposal_view', last_proposal_view)
-        print('last_proposal', last_proposal)
-        # last_proposal[batch_idxes].view(batch_size, -1)[local_still_alive_idexes] = this_proposal[local_still_alive_idexes]
-        last_proposal[last_proposal_indexes] = this_proposal[local_still_alive_idexes]
-        print('last_proposal', last_proposal)
-        asdfasdf
-        # global_still_alive_idexes = alive.nonzero().long()
-        # print('global_still_alive_idexes', global_still_alive_idexes)
-        if term_node.data[0][0]:
-            terminated_ok = True
-            break
+        if local_still_alive_idexes.size()[0] > 0:
+            this_proposal = torch.LongTensor(batch_size, 3)
+            for p in range(3):
+                this_proposal[:, p] = proposal_nodes_batch[p].data
+            last_proposal_indexes = batch_idxes[local_still_alive_idexes]
+            last_proposal[last_proposal_indexes] = this_proposal[local_still_alive_idexes]
         else:
-            last_proposal = torch.LongTensor([
-                proposal_nodes[0].data[0][0],
-                proposal_nodes[1].data[0][0],
-                proposal_nodes[2].data[0][0],
-            ])
+            # all games finished
+            break
+
+        asdfasdf
     rewards = [0, 0]
     # so, lets say agent is 1, means the previous proposal was
     # by agent 0
