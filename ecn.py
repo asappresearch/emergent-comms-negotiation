@@ -274,9 +274,6 @@ def run_episode(
     alive = torch.zeros(batch_size).fill_(1)
     terminated_ok = torch.zeros(batch_size)
 
-    alive[1] = 0  # TODO REMOVE THIS DEUBGGING
-    print('WARNIGN DEBUG CODE PRESENT')
-
     nodes_by_agent = [[], []]
     if render:
         print('  N=%s' % N, end='')
@@ -298,13 +295,8 @@ def run_episode(
         m_prev_batch = m_prev[batch_idxes]
         p_prev_batch = p_prev[batch_idxes]
 
-        # print('pool_batch.size()', pool_batch.size())
-        # print('utility_batch.size()', utility_batch.size())
         c_batch = torch.cat([pool_batch, utility_batch], 1)
-        # print('c_batch.size()', c_batch.size())
         agent_model = agent_models[agent]
-        # print('m_prev_batch.size()', m_prev_batch.size())
-        # print('p_prev_batch.size()', p_prev_batch.size())
         term_node_batch, utterance_nodes_batch, proposal_nodes_batch = agent_model(
             context=Variable(c_batch),
             m_prev=Variable(m_prev_batch),
@@ -325,7 +317,7 @@ def run_episode(
         terminated_ok[batch_idxes] = term_node_batch.data.view(batch_size)
 
         local_still_alive_idexes = (1 - term_node_batch.data.view(batch_size)).nonzero().long().view(-1)
-        if local_still_alive_idexes.size()[0] > 0:
+        if len(local_still_alive_idexes.size()) > 0 and local_still_alive_idexes.size()[0] > 0:
             this_proposal = torch.LongTensor(batch_size, 3)
             for p in range(3):
                 this_proposal[:, p] = proposal_nodes_batch[p].data
@@ -335,7 +327,7 @@ def run_episode(
             # all games finished
             break
 
-        asdfasdf
+    asdfasdf
     rewards = [0, 0]
     # so, lets say agent is 1, means the previous proposal was
     # by agent 0
