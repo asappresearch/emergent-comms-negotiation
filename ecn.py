@@ -44,9 +44,7 @@ class ContextNet(nn.Module):
             num_layers=1)
 
     def forward(self, x):
-        # print('ContextNet x.size()', x.size())
         batch_size = x.size()[0]
-        # print('batch_size', batch_size)
         x = self.embedding(x)
         x = x.view(-1, batch_size, self.embedding_size)
         state = (
@@ -54,7 +52,6 @@ class ContextNet(nn.Module):
             Variable(torch.zeros(1, batch_size, self.embedding_size))
         )
         x, state = self.lstm(x, state)
-        # print('state[0].size()', state[0].size())
         return state[0].view(batch_size, self.embedding_size)
 
 
@@ -63,26 +60,19 @@ class UtteranceNet(nn.Module):
         super().__init__()
         self.embedding_size = embedding_size
         self.embedding = nn.Embedding(11, embedding_size)
-        # using GRU, since means the hidden state exactly matches the embedding size,
-        # dont need to think about how to handle the presence of both cell and
-        # hidden states
         self.lstm = nn.LSTM(
             input_size=embedding_size,
             hidden_size=embedding_size,
             num_layers=1)
 
     def forward(self, x):
-        # print('UtteranceNet x.size()', x.size())
         batch_size = x.size()[0]
-        # print('batch_size', batch_size)
         x = self.embedding(x)
         x = x.view(-1, batch_size, self.embedding_size)
-        # state = Variable(torch.zeros(1, 1, self.embedding_size))
         state = (
             Variable(torch.zeros(1, 1, self.embedding_size)),
             Variable(torch.zeros(1, 1, self.embedding_size)))
         x, state = self.lstm(x, state)
-        # print('state[0].size()', state[0].size())
         return state[0].view(batch_size, self.embedding_size)
 
 
@@ -97,17 +87,13 @@ class ProposalNet(nn.Module):
             num_layers=1)
 
     def forward(self, x):
-        # print('ProposalNet x.size()', x.size())
         batch_size = x.size()[0]
-        # print('batch_size', batch_size)
         x = self.embedding(x)
         x = x.view(-1, batch_size, self.embedding_size)
         state = (
             Variable(torch.zeros(1, batch_size, self.embedding_size)),
             Variable(torch.zeros(1, batch_size, self.embedding_size)))
-        # state = Variable(torch.zeros(1, 1, self.embedding_size))
         x, state = self.lstm(x, state)
-        # print('state[0].size()', state[0].size())
         return state[0].view(batch_size, self.embedding_size)
 
 
@@ -131,7 +117,6 @@ class TermPolicy(nn.Module):
     def forward(self, x):
         x = self.h1(x)
         x = F.sigmoid(x)
-        # print('term x.size()', x.size())
         out_node = torch.bernoulli(x)
         return out_node
 
@@ -152,7 +137,6 @@ class UtterancePolicy(nn.Module):
         self.h1 = nn.Linear(embedding_size, num_tokens)
 
     def forward(self, h_t):
-        # print('h_t.size()', h_t.size())
         batch_size = h_t.size()[0]
 
         state = (
@@ -165,19 +149,13 @@ class UtterancePolicy(nn.Module):
         tokens = []
         while len(tokens) < self.max_len:
             token_onehot = self.onehot[last_token]
-            # print('token_onehot.size()', token_onehot.size())
             token_onehot = token_onehot.view(1, batch_size, self.num_tokens)
-            # print('token_onehot.size()', token_onehot.size())
             out, state = self.lstm(Variable(token_onehot), state)
             out = self.h1(out)
             out = F.softmax(out)
-            # print('out.size()', out.size())
             token_node = torch.multinomial(out.view(batch_size, self.num_tokens))
-            # token_node = torch.multinomial(out)
             tokens.append(token_node)
-            # print('token_node.data.size()', token_node.data.size())
             last_token = token_node.data.view(batch_size)
-            # print('last_token', last_token)
         return tokens
 
 
@@ -221,13 +199,8 @@ class AgentModel(nn.Module):
         m_h = self.utterance_net(m_prev)
         p_h = self.proposal_net(p_prev)
 
-        # print('c_h.size()', c_h.size())
-        # print('m_h.size()', m_h.size())
-        # print('p_h.size()', p_h.size())
         h_t = torch.cat([c_h, m_h, p_h], -1)
-        # print('h_t.size()', h_t.size())
         h_t = self.combined_net(h_t)
-        # print('h_t.size()', h_t.size())
 
         term_node = self.term_policy(h_t)
         utterance_token_nodes = []
@@ -383,8 +356,6 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file):
             enable_comms=enable_comms,
             enable_proposal=enable_proposal))
         agent_opts.append(optim.Adam(params=agent_models[i].parameters()))
-    # print(agent_models[0].state_dict())
-    # asdfasdf
     if path.isfile(model_file):
         with open(model_file, 'rb') as f:
             state = torch.load(f)
@@ -395,7 +366,6 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file):
         # create a kind of 'virtual' start_time
         start_time = time.time() - state['elapsed_time']
         print('loaded model')
-            # agent_opts.append(optim.Adam(params=agent_models[i].parameters()))
     last_print = time.time()
     rewards_sum = [0, 0]
     count_sum = 0
