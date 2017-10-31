@@ -11,22 +11,23 @@ from torch.autograd import Variable
 import torch.nn.functional as F
 
 
-def sample_items():
-    pool = torch.from_numpy(np.random.choice(6, 3, replace=True))
+def sample_items(batch_size):
+    pool = torch.from_numpy(np.random.choice(6, (batch_size, 3), replace=True))
     return pool
 
 
-def sample_utility():
+def sample_utility(batch_size):
     u = torch.zeros(3).long()
     while u.sum() == 0:
-        u = torch.from_numpy(np.random.choice(11, 3, replace=True))
+        u = torch.from_numpy(np.random.choice(11, (batch_size, 3), replace=True))
     return u
 
 
-def sample_N():
-    N = np.random.poisson(7)
-    N = max(4, N)
-    N = min(10, N)
+def sample_N(batch_size):
+    N = np.random.poisson(7, batch_size)
+    N = np.maximum(4, N)
+    N = np.minimum(10, N)
+    N = torch.from_numpy(N)
     return N
 
 
@@ -37,17 +38,24 @@ class ContextNet(nn.Module):
         super().__init__()
         self.embedding_size = embedding_size
         self.embedding = nn.Embedding(11, embedding_size)
-        self.lstm = nn.GRU(
+        self.lstm = nn.LSTM(
             input_size=embedding_size,
             hidden_size=embedding_size,
             num_layers=1)
 
     def forward(self, x):
+        print('ContextNet x.size()', x.size())
+        batch_size = x.size()[0]
+        print('batch_size', batch_size)
         x = self.embedding(x)
-        x = x.view(-1, 1, self.embedding_size)
-        state = Variable(torch.zeros(1, 1, self.embedding_size))
+        x = x.view(-1, batch_size, self.embedding_size)
+        state = (
+            Variable(torch.zeros(1, batch_size, self.embedding_size)),
+            Variable(torch.zeros(1, batch_size, self.embedding_size))
+        )
         x, state = self.lstm(x, state)
-        return state[0].view(1, -1)
+        print('state[0].size()', state[0].size())
+        return state[0].view(batch_size, self.embedding_size)
 
 
 class UtteranceNet(nn.Module):
@@ -58,17 +66,24 @@ class UtteranceNet(nn.Module):
         # using GRU, since means the hidden state exactly matches the embedding size,
         # dont need to think about how to handle the presence of both cell and
         # hidden states
-        self.lstm = nn.GRU(
+        self.lstm = nn.LSTM(
             input_size=embedding_size,
             hidden_size=embedding_size,
             num_layers=1)
 
     def forward(self, x):
+        print('UtteranceNet x.size()', x.size())
+        batch_size = x.size()[0]
+        print('batch_size', batch_size)
         x = self.embedding(x)
-        x = x.view(-1, 1, self.embedding_size)
-        state = Variable(torch.zeros(1, 1, self.embedding_size))
+        x = x.view(-1, batch_size, self.embedding_size)
+        # state = Variable(torch.zeros(1, 1, self.embedding_size))
+        state = (
+            Variable(torch.zeros(1, 1, self.embedding_size)),
+            Variable(torch.zeros(1, 1, self.embedding_size)))
         x, state = self.lstm(x, state)
-        return state[0].view(1, -1)
+        print('state[0].size()', state[0].size())
+        return state[0].view(batch_size, self.embedding_size)
 
 
 class ProposalNet(nn.Module):
@@ -76,17 +91,24 @@ class ProposalNet(nn.Module):
         super().__init__()
         self.embedding_size = embedding_size
         self.embedding = nn.Embedding(11, embedding_size)
-        self.lstm = nn.GRU(
+        self.lstm = nn.LSTM(
             input_size=embedding_size,
             hidden_size=embedding_size,
             num_layers=1)
 
     def forward(self, x):
+        print('ProposalNet x.size()', x.size())
+        batch_size = x.size()[0]
+        print('batch_size', batch_size)
         x = self.embedding(x)
-        x = x.view(-1, 1, self.embedding_size)
-        state = Variable(torch.zeros(1, 1, self.embedding_size))
+        x = x.view(-1, batch_size, self.embedding_size)
+        state = (
+            Variable(torch.zeros(1, batch_size, self.embedding_size)),
+            Variable(torch.zeros(1, batch_size, self.embedding_size)))
+        # state = Variable(torch.zeros(1, 1, self.embedding_size))
         x, state = self.lstm(x, state)
-        return state[0].view(1, -1)
+        print('state[0].size()', state[0].size())
+        return state[0].view(batch_size, self.embedding_size)
 
 
 class CombinedNet(nn.Module):
@@ -115,13 +137,14 @@ class TermPolicy(nn.Module):
 
 
 class UtterancePolicy(nn.Module):
-    def __init__(self, embedding_size=100, num_tokens=11, max_len=6):
+    def __init__(self, embedding_size=100, num_tokens=10, max_len=6):
         super().__init__()
         # use this to make onehot
+        self.embedding_size = embedding_size
         self.onehot = torch.eye(num_tokens)
         self.num_tokens = num_tokens
         self.max_len = max_len
-        self.lstm = nn.GRU(
+        self.lstm = nn.LSTM(
             input_size=num_tokens,
             hidden_size=embedding_size,
             num_layers=1
@@ -129,22 +152,27 @@ class UtterancePolicy(nn.Module):
         self.h1 = nn.Linear(embedding_size, num_tokens)
 
     def forward(self, h_t):
-        state = h_t.view(1, 1, -1)
+        print('h_t.size()', h_t.size())
+        batch_size = h_t.size()[0]
+
+        state = (
+            h_t.view(1, 1, -1),
+            Variable(torch.zeros(1, 1, self.embedding_size))
+        )
+
         # use first token as the initial dummy token
-        last_token = 0
+        last_token = torch.zeros(batch_size)
         tokens = []
-        # use last token of vocab as end-of-utterance
-        while last_token != self.num_tokens - 1 and len(tokens) < self.max_len:
-            token_onehot = self.onehot[last_token].view(1, 1, -1)
+        while len(tokens) < self.max_len:
+            token_onehot = self.onehot[last_token].view(1, batch_size, -1)
             out, state = self.lstm(Variable(token_onehot), state)
             out = self.h1(out)
             out = F.softmax(out)
-            # print('utt out.size()', out.size())
-            # print('out.requires_grad', out.requires_grad)
-            token_node = torch.multinomial(out.view(1, -1))
-            # print('token_node.requires_grad', token_node.requires_grad)
+            token_node = torch.multinomial(out.view(batch_size, -1))
+            # token_node = torch.multinomial(out)
             tokens.append(token_node)
-            last_token = token_node.data[0][0]
+            print('token_node.data.size()', token_node.data.size())
+            last_token = token_node.data.view(-1)
         return tokens
 
 
@@ -188,8 +216,13 @@ class AgentModel(nn.Module):
         m_h = self.utterance_net(m_prev)
         p_h = self.proposal_net(p_prev)
 
+        print('c_h.size()', c_h.size())
+        print('m_h.size()', m_h.size())
+        print('p_h.size()', p_h.size())
         h_t = torch.cat([c_h, m_h, p_h], -1)
+        print('h_t.size()', h_t.size())
         h_t = self.combined_net(h_t)
+        print('h_t.size()', h_t.size())
 
         term_node = self.term_policy(h_t)
         utterance_token_nodes = []
@@ -219,15 +252,21 @@ class Agent(object):
 def run_episode(
         prosocial,
         agent_models,
+        batch_size=128,
         render=False):
-    N = sample_N()
-    pool = sample_items()
-    utilities = torch.zeros(2, 3).long()
-    utilities[0] = sample_utility()
-    utilities[1] = sample_utility()
-    last_proposal = torch.zeros(3).long()
-    m_prev = torch.zeros(1).long()
-    p_prev = torch.zeros(3).long()
+    batch_size = 4
+    # following take not much memory, not fluffed up yet:
+    N = sample_N(batch_size)
+    pool = sample_items(batch_size)
+    utilities = torch.zeros(2, batch_size, 3).long()
+    utilities[0] = sample_utility(batch_size)
+    utilities[1] = sample_utility(batch_size)
+    last_proposal = torch.zeros(batch_size, 3).long()
+    m_prev = torch.zeros(batch_size, 6).long()
+    p_prev = torch.zeros(batch_size, 3).long()
+    alive = torch.zeros(batch_size).fill_(1)
+    terminated_ok = torch.zeros(batch_size)
+
     nodes_by_agent = [[], []]
     if render:
         print('  N=%s' % N, end='')
@@ -236,16 +275,27 @@ def run_episode(
         for i in range(2):
             print(' %s,%s,%s' % (utilities[i][0], utilities[i][2], utilities[i][2]), end='')
         print('')
-    terminated_ok = False
-    for t in range(N):
+    for t in range(10):
         agent = 1 if t % 2 else 0
-        utility = utilities[agent]
-        c = torch.cat([pool, utility]).view(1, -1)
+        batch_idxes = alive.nonzero().long().view(-1)
+        N_batch = N[batch_idxes]
+        pool_batch = pool[batch_idxes]
+        utility_batch = utilities[agent][batch_idxes]
+        last_proposal_batch = last_proposal[batch_idxes]
+        m_prev_batch = m_prev[batch_idxes]
+        p_prev_batch = p_prev[batch_idxes]
+
+        print('pool_batch.size()', pool_batch.size())
+        print('utility_batch.size()', utility_batch.size())
+        c = torch.cat([pool_batch, utility_batch], 1)
+        print('c.size()', c.size())
         agent_model = agent_models[agent]
+        print('m_prev_batch.size()', m_prev_batch.size())
+        print('p_prev_batch.size()', p_prev_batch.size())
         term_node, utterance_nodes, proposal_nodes = agent_model(
             context=Variable(c),
-            m_prev=Variable(m_prev.view(1, -1)),
-            p_prev=Variable(p_prev.view(1, -1))
+            m_prev=Variable(m_prev_batch),
+            p_prev=Variable(p_prev_batch)
         )
         nodes_by_agent[agent].append(term_node)
         nodes_by_agent[agent] += utterance_nodes
@@ -257,6 +307,15 @@ def run_episode(
                 proposal_nodes[1].data[0][0],
                 proposal_nodes[2].data[0][0]
             ))
+        print('term_node.data.size()', term_node.data.size())
+        print('term_node.data', term_node.data)
+        alive[batch_idxes] = term_node.data
+        print('alive', alive)
+        adfasdf
+
+        terminated_now = not terminated and term_node.data[:, 0]
+        terminated_ok = terminated_ok | terminated_now
+        asdfasd
         if term_node.data[0][0]:
             terminated_ok = True
             break
