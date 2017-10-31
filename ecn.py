@@ -156,23 +156,28 @@ class UtterancePolicy(nn.Module):
         batch_size = h_t.size()[0]
 
         state = (
-            h_t.view(1, 1, -1),
-            Variable(torch.zeros(1, 1, self.embedding_size))
+            h_t.view(1, batch_size, self.embedding_size),
+            Variable(torch.zeros(1, batch_size, self.embedding_size))
         )
 
         # use first token as the initial dummy token
-        last_token = torch.zeros(batch_size)
+        last_token = torch.zeros(batch_size).long()
         tokens = []
         while len(tokens) < self.max_len:
-            token_onehot = self.onehot[last_token].view(1, batch_size, -1)
+            token_onehot = self.onehot[last_token]
+            print('token_onehot.size()', token_onehot.size())
+            token_onehot = token_onehot.view(1, batch_size, self.num_tokens)
+            print('token_onehot.size()', token_onehot.size())
             out, state = self.lstm(Variable(token_onehot), state)
             out = self.h1(out)
             out = F.softmax(out)
-            token_node = torch.multinomial(out.view(batch_size, -1))
+            print('out.size()', out.size())
+            token_node = torch.multinomial(out.view(batch_size, self.num_tokens))
             # token_node = torch.multinomial(out)
             tokens.append(token_node)
             print('token_node.data.size()', token_node.data.size())
-            last_token = token_node.data.view(-1)
+            last_token = token_node.data.view(batch_size)
+            print('last_token', last_token)
         return tokens
 
 
@@ -287,29 +292,29 @@ def run_episode(
 
         print('pool_batch.size()', pool_batch.size())
         print('utility_batch.size()', utility_batch.size())
-        c = torch.cat([pool_batch, utility_batch], 1)
-        print('c.size()', c.size())
+        c_batch = torch.cat([pool_batch, utility_batch], 1)
+        print('c_batch.size()', c_batch.size())
         agent_model = agent_models[agent]
         print('m_prev_batch.size()', m_prev_batch.size())
         print('p_prev_batch.size()', p_prev_batch.size())
-        term_node, utterance_nodes, proposal_nodes = agent_model(
-            context=Variable(c),
+        term_node_batch, utterance_nodes_batch, proposal_nodes_batch = agent_model(
+            context=Variable(c_batch),
             m_prev=Variable(m_prev_batch),
             p_prev=Variable(p_prev_batch)
         )
-        nodes_by_agent[agent].append(term_node)
-        nodes_by_agent[agent] += utterance_nodes
-        nodes_by_agent[agent] += proposal_nodes
+        nodes_by_agent[agent].append(term_node_batch)
+        nodes_by_agent[agent] += utterance_nodes_batch
+        nodes_by_agent[agent] += proposal_nodes_batch
         if render:
-            print('  t %s term=%s' % (t, term_node.data[0][0]), end='')
+            print('  t %s term=%s' % (t, term_node_batch.data[0][0]), end='')
             print(' prop %s,%s,%s' % (
-                proposal_nodes[0].data[0][0],
-                proposal_nodes[1].data[0][0],
-                proposal_nodes[2].data[0][0]
+                proposal_nodes_batch[0].data[0][0],
+                proposal_nodes_batch[1].data[0][0],
+                proposal_nodes_batch[2].data[0][0]
             ))
-        print('term_node.data.size()', term_node.data.size())
-        print('term_node.data', term_node.data)
-        alive[batch_idxes] = term_node.data
+        print('term_node_batch.data.size()', term_node_batch.data.size())
+        print('term_node_batch.data', term_node_batch.data)
+        alive[batch_idxes] = term_node_batch.data
         print('alive', alive)
         adfasdf
 
