@@ -1,7 +1,7 @@
 - add entropy regularization
-- add forward batching
+- add reward for batching
 - add backward batching
-- check N for forward batching
+- cudaify
 - print example utterances/conversations
 
 done:
@@ -14,3 +14,5 @@ done:
 - add baselining control variate
 - fix gru => lstm
 - remove termination token
+- check N for forward batching
+- add forward batching

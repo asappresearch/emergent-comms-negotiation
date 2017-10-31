@@ -306,6 +306,69 @@ def run_episode(
             last_proposal[last_proposal_indexes] = this_proposal[local_still_alive_idexes]
 
         # calcualate rewards for any that just finished
+        reward_eligible_batch = term_node_batch.data.view(batch_size).clone()
+
+        reward_eligible_batch_idxes = reward_eligible_batch.nonzero().long().view(-1)
+        print('reward_eligible_batch', reward_eligible_batch)
+        if len(reward_eligible_batch_idxes.size()) > 0 and reward_eligible_batch_idxes.size()[0] > 0:
+            # things we need to do:
+            # - eliminate any that provided invalid proposals (exceeded pool)
+            # - calculate score for each agent
+            # - calculcate max score for each agent
+            # - normalize score
+            # print('WARNING DEBUG CODE')
+            # last_proposal_batch[reward_eligible_batch_idxes] = 3
+            print('last_proposal', last_proposal_batch[reward_eligible_batch_idxes])
+            print(pool_batch[reward_eligible_batch_idxes])
+            exceeded_pool, _ = ((last_proposal_batch[reward_eligible_batch_idxes] - pool_batch[reward_eligible_batch_idxes]) > 0).max(1)
+            print('exceeded_pool', exceeded_pool)
+            if exceeded_pool.max() > 0:
+                reward_eligible_batch[exceeded_pool.nonzero().long().view(-1)] = 0
+            print('reward_eligible_batch', reward_eligible_batch)
+
+        reward_eligible_batch_idxes = reward_eligible_batch.nonzero().long().view(-1)
+        print('reward_eligible_batch', reward_eligible_batch)
+        if len(reward_eligible_batch_idxes.size()) > 0 and reward_eligible_batch_idxes.size()[0] > 0:
+            proposer = 1 - agent
+            proposer_utility_batch = utilities[proposer][batch_idxes]
+            print('proposer_utility_batch', proposer_utility_batch)
+            print('proposer_utility_batch[reward_eligible_batch_idxes].size()', proposer_utility_batch[reward_eligible_batch_idxes].size())
+            print('pool_batch[reward_eligible_batch_idxes].size()', pool_batch[reward_eligible_batch_idxes].size())
+            """
+            so we have the following matrices
+               utility = N x P
+            where N is number of eligible games, and P is number of different item types
+
+            and we have:
+               pool = N x P
+
+            we want as result:
+               reward = N
+
+            or:
+               reward = N x 1
+
+            for each n in (0, N-1), we want to calculate
+               pool[n] . reward[n]
+
+            if want to use matrix, we'd probably need to do diag, which sounds inefficient
+
+            so, let's just loop over, and do the backprop...
+            """
+            print(reward_eligible_batch_idxes)
+            for b, batch_idx in enumerate(reward_eligible_batch_idxes):
+                print('-------')
+                print(b, batch_idx)
+                print('. proposer_utility_batch[batch_idx]', proposer_utility_batch[batch_idx])
+                print('. pool_batch[batch_idx]', pool_batch[batch_idx])
+                proposer_reward = proposer_utility_batch[batch_idx].dot(pool_batch[batch_idx])
+                print('. proposer_reward', proposer_reward)
+                print('')
+            # proposer_reward_batch = proposer_utility_batch[reward_eligible_batch_idxes] @ \
+            #     pool_batch[reward_eligible_batch_idxes].transpose(0, 1)
+            # print('proposer_reward_batch', proposer_reward_batch)
+            # proposer_reward_batch[reward_eligible_batch_idxes]
+            asdfas
 
         if len(local_still_alive_idexes.size()) == 0 or local_still_alive_idexes.size()[0] == 0:
             # all games finished
