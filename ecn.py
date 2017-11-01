@@ -253,7 +253,7 @@ def run_episode(
     actions_by_timestep = []
     alive_masks = []
     for b in range(batch_size):
-        games.append({'reward_0': 0, 'reward_1': 0})
+        games.append({'rewards': [0, 0]})
     alive_games = games.copy()
 
     # nodes_by_agent = [[], []]
@@ -323,35 +323,44 @@ def run_episode(
             # print('last_proposal', last_proposal[reward_eligible_idxes])
             print(pool[reward_eligible_idxes])
             exceeded_pool, _ = ((last_proposal - pool) > 0).max(1)
-            # print('exceeded_pool', exceeded_pool)
             if exceeded_pool.max() > 0:
                 reward_eligible_mask[exceeded_pool.nonzero().long().view(-1)] = 0
-            # print('reward_eligible_mask', reward_eligible_mask)
 
         reward_eligible_idxes = reward_eligible_mask.nonzero().long().view(-1)
-        # print('reward_eligible_mask', reward_eligible_mask)
         if reward_eligible_mask.max() > 0:
             proposer = 1 - agent
             accepter = agent
-            proposer_utility = utilities[:, proposer]
-            # print('proposer_utility', proposer_utility)
-            # print('proposer_utility[reward_eligible_idxes].size()', proposer_utility[reward_eligible_idxes].size())
-            # print('pool[reward_eligible_idxes].size()', pool[reward_eligible_idxes].size())
-            print(reward_eligible_idxes)
-            for b in reward_eligible_idxes:
-                # print('-------')
-                # print('b', b)
-                # print('. proposer_utility[b]', proposer_utility[b])
-                # print('. pool[b]', pool[b])
-                proposer_reward = proposer_utility[b].dot(pool[b])
-                alive_games[b]['reward_%s' % proposer] = proposer_reward
-                # print('. proposer_reward', proposer_reward)
+            proposal = torch.zeros(batch_size, 2, 3)
+            proposal[:, proposer] = last_proposal
+            proposal[:, accepter] = pool - last_proposal
+            max_utility, _ = utilities.max(1)
 
-                accepter_reward = utility[b].dot(pool[b])
+            for b in reward_eligible_idxes:
+                rewards = [0, 0]
+                for i in range(2):
+                    rewards[i] = utilities[b, i].dot(pool[b])
+                # rewards[accepter] = accepter_utility[b].dot(pool[b])
+
+                if prosocial:
+                    total_actual_reward = np.sum(rewards)
+                    total_possible_reward = max_utility[b].dot(pool[b])
+                    scaled_reward = 0
+                    if total_possible_reward != 0:
+                        scaled_reward = total_actual_reward / total_possible_reward
+                    rewards = [scaled_reward, scaled_reward]
+                else:
+                    for i in range(2):
+                        max_possible = utilities[b, i].dot(pool)
+                        if max_possible != 0:
+                            rewards[i] /= max_possible
+
+                alive_games[b]['rewards'] = rewards
+                # print('rewards', rewards)
+                # asdfadsf
+                # for i in range(2):
+                # alive_games[b]['reward_%s' % proposer] = proposer_reward
                 # alive_games[b]['reward_%s' % accepter] = accepter_reward
-                # print('')
             # print('alive_games', alive_games)
-            # asdfas
 
         still_alive_mask = 1 - term_node.data.view(batch_size).clone().byte()
         finished_N = t >= N
@@ -375,35 +384,12 @@ def run_episode(
         p_prev = p_prev[still_alive_idxes]
         N = N[still_alive_idxes]
 
-        # l = locals()
-        # for name in ['pool', 'last_proposal', 'utilities', 'm_prev', 'p_prev', 'N']:
-        #     l[name] = l[name][still_alive_idxes]
-        #     print('l[name].size()', l[name].size())
-            # exec('%s = %s[still_alive_idxes]' % (name, name))
-            # tensor = tensor[still_alive_idxes]
-        # print('l', l)
-
         new_alive_games = []
         for i in still_alive_idxes:
             new_alive_games.append(alive_games[i])
         alive_games = new_alive_games
 
     print('games', games)
-    # asdfasdf
-    # rewards = [0, 0]
-    # so, lets say agent is 1, means the previous proposal was
-    # by agent 0
-    proposing_agent = 1 - agent
-    # cap last proposal by pool size
-    exceeded_pool = False
-    # if render:
-    #     print(last_proposal, torch.min(pool, last_proposal))
-    if t == 0:
-        terminated_ok = False
-    if (last_proposal - torch.min(pool, last_proposal)).sum() != 0:
-        exceeded_pool = True
-    if render:
-        print('term ok %s exceeded_pool %s' % (terminated_ok, exceeded_pool))
     if not exceeded_pool and terminated_ok:
         rewards[proposing_agent] = utilities[proposing_agent].dot(last_proposal)
         rewards[agent] = utilities[agent].dot(pool - last_proposal)
@@ -411,12 +397,6 @@ def run_episode(
             total_actual_reward = np.sum(rewards)
             max_utility = torch.max(*utilities)
             total_possible_reward = max_utility.dot(pool)
-            # if render:
-            #     print('rewards', rewards)
-            #     print('utilities', utilities)
-            #     print('max_utility', max_utility)
-            #     print('total_actual_reward %s total_possible_reward %s' (
-            #         total_actual_reward, total_possible_reward))
             scaled_reward = 0
             if total_possible_reward != 0:
                 scaled_reward = total_actual_reward / total_possible_reward
