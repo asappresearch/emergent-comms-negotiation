@@ -230,10 +230,10 @@ class Agent(object):
 def run_episode(
         prosocial,
         agent_models,
-        batch_size=128,
+        batch_size,
         render=False):
-    batch_size = 5
-    print('WARNIGN DEBUG CODE PRESENT')
+    # batch_size = 5
+    # print('WARNIGN DEBUG CODE PRESENT')
 
     # following take not much memory, not fluffed up yet:
     N = sample_N(batch_size).int()
@@ -263,9 +263,10 @@ def run_episode(
             print(' %s,%s,%s' % (utilities[0][i][0], utilities[0][i][1], utilities[0][i][2]), end='')
         print('')
     for t in range(10):
-        agent = 1 if t % 2 else 0
+        agent = 0 if t % 2 == 0 else 1
         batch_size = len(alive_games)
-        print('batch_size', batch_size)
+        if render:
+            print('batch_size', batch_size)
         utility = utilities[:, agent]
 
         c = torch.cat([pool, utility], 1)
@@ -359,13 +360,13 @@ def run_episode(
             new_alive_games.append(alive_games[i])
         alive_games = new_alive_games
 
-    print('games', games)
+    # print('games', games)
     if render:
-        print('  reward: %.1f,%.1f' % (games[0]['rewards']))
+        print('  reward:', games[0]['rewards'])
     return actions_by_timestep, [g['rewards'] for g in games], alive_masks
 
 
-def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file):
+def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, batch_size):
     if seed is not None:
         np.random.seed(seed)
         torch.manual_seed(seed)
@@ -405,22 +406,52 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file):
     baseline = 0
     while True:
         render = time.time() - last_print >= 3.0
-        nodes_by_agent, rewards = run_episode(
+        actions, rewards, alive_masks = run_episode(
             agent_models=agent_models,
             prosocial=prosocial,
+            batch_size=batch_size,
             render=render)
+
         for i in range(2):
-            if len(nodes_by_agent[i]) == 0:
-                continue
-            rewards_sum[i] += rewards[i]
-            reward = rewards[i]
-            for node in nodes_by_agent[i]:
-                node.reinforce(reward - baseline)
             agent_opts[i].zero_grad()
-            autograd.backward(nodes_by_agent[i], [None] * len(nodes_by_agent[i]))
-            agent_opts[i].step()
-        baseline = 0.7 * baseline + 0.3 * (np.mean(rewards))
-        count_sum += 1
+        nodes_by_agent = [[], []]
+        alive_rewards = torch.zeros(batch_size, 2)
+        all_rewards = torch.zeros(batch_size, 2)
+        for i in range(2):
+            # note to self: just use .clone() or something...
+            all_rewards[:, i] = torch.FloatTensor([r[i] for r in rewards])
+            alive_rewards[:, i] = torch.FloatTensor([r[i] for r in rewards])
+        # print('alive_rewards', alive_rewards)
+        # asdfsdf
+        T = len(rewards)
+        for t in range(T):
+            if render:
+                print('t', t)
+            # print('alive_rewards', alive_rewards)
+            agent = 0 if t % 2 == 0 else 1
+            for action in actions[t]:
+                # print('alive_rewards[:, agent]', alive_rewards[:, agent])
+                action.reinforce(alive_rewards[:, agent].contiguous().view(-1, 1))
+            nodes_by_agent[agent] += actions[t]
+            mask = alive_masks[t]
+            # if enable_cuda:
+            #     mask = mask.cuda()
+            # print('mask', mask)
+            if mask.max() == 0:
+                break
+            alive_rewards = alive_rewards[mask.nonzero().long().view(-1)]
+        for i in range(2):
+            # print('nodes_by_agent[i]', nodes_by_agent[i])
+            if len(nodes_by_agent[i]) > 0:
+                # print('running step')
+                autograd.backward(nodes_by_agent[i], len(nodes_by_agent[i]) * [None])
+                agent_opts[i].step()
+
+        # print('np.mean(rewards)', np.mean())
+        # print('all_rewards.mean()', all_rewards.mean())
+        baseline = 0.7 * baseline + 0.3 * all_rewards.mean()
+        # adsfadf
+        count_sum += batch_size
         if render:
             print('episode %s avg rewards %.1f %.1f b=%.1f' % (
                 episode, rewards_sum[0] / count_sum, rewards_sum[1] / count_sum, baseline))
@@ -454,6 +485,7 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--model-file', type=str, default='model_saves/model.dat')
+    parser.add_argument('--batch-size', type=int, default=128)
     parser.add_argument('--seed', type=int, help='optional')
     parser.add_argument('--disable-proposal', action='store_true')
     parser.add_argument('--disable-comms', action='store_true')
