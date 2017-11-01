@@ -1,7 +1,6 @@
 - add entropy regularization
-- add reward for batching
-- add backward batching
 - cudaify
+- add utterance back into net
 - print example utterances/conversations
 
 done:
@@ -16,3 +15,5 @@ done:
 - remove termination token
 - check N for forward batching
 - add forward batching
+- add reward for batching
+- add backward batching
