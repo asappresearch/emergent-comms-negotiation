@@ -204,10 +204,8 @@ class AgentModel(nn.Module):
         # p_h = self.proposal_net(p_prev)
 
         # h_t = torch.cat([c_h, m_h, p_h], -1)
-        # h_t = self.combined_net(h_t)
-        # h_t.fill_(0)
-        # h_t = Variable(torch.rand(batch_size, self.embedding_size))
-        h_t = Variable(torch.zeros(batch_size, self.embedding_size))
+        h_t = Variable(torch.zeros(batch_size, self.embedding_size * 3))
+        h_t = self.combined_net(h_t)
 
         term_node = self.term_policy(h_t)
         utterance_token_nodes = []
