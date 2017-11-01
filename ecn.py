@@ -196,15 +196,15 @@ class AgentModel(nn.Module):
             # do this so it registers its parameters:
             self.__setattr__('policy%s' % i, proposal_policy)
 
-    def forward(self, context, m_prev, p_prev):
+    def forward(self, context, m_prev, prev_proposal):
         batch_size = context.size()[0]
         # print('batch_size', batch_size)
         c_h = self.context_net(context)
         # m_h = self.utterance_net(m_prev)
-        # p_h = self.proposal_net(p_prev)
+        p_h = self.proposal_net(prev_proposal)
 
         # h_t = torch.cat([c_h, m_h, p_h], -1)
-        h_t = torch.cat([c_h, c_h, c_h], -1)
+        h_t = torch.cat([c_h, c_h, p_h], -1)
         h_t = Variable(torch.zeros(batch_size, self.embedding_size * 3))
         h_t = self.combined_net(h_t)
 
@@ -249,13 +249,13 @@ def run_episode(
     utilities[:, 1] = sample_utility(batch_size)
     last_proposal = torch.zeros(batch_size, 3).long()
     m_prev = torch.zeros(batch_size, 6).long()
-    p_prev = torch.zeros(batch_size, 3).long()
+    # p_prev = torch.zeros(batch_size, 3).long()
 
     games = []
     actions_by_timestep = []
     alive_masks = []
     for b in range(batch_size):
-        games.append({'rewards': [0, 0], 'num_steps': 0})
+        games.append({'rewards': [0, 0]})
     alive_games = games.copy()
 
     if render:
@@ -278,7 +278,7 @@ def run_episode(
         term_node, utterance_nodes, proposal_nodes = agent_model(
             context=Variable(c),
             m_prev=Variable(m_prev),
-            p_prev=Variable(p_prev)
+            prev_proposal=Variable(last_proposal)
         )
 
         actions_t = []
@@ -358,6 +358,7 @@ def run_episode(
             alive_games[b]['steps'] = t + 1
 
         if still_alive_mask.max() == 0:
+            # print('steps', [g['steps'] for g in games])
             break
 
         this_proposal = torch.LongTensor(batch_size, 3)
@@ -371,7 +372,7 @@ def run_episode(
         last_proposal = last_proposal[still_alive_idxes]
         utilities = utilities[still_alive_idxes]
         m_prev = m_prev[still_alive_idxes]
-        p_prev = p_prev[still_alive_idxes]
+        # p_prev = p_prev[still_alive_idxes]
         N = N[still_alive_idxes]
         if still_alive_mask[0] == 0:
             b_0_present = False
@@ -443,12 +444,18 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
             all_rewards[:, i] = torch.FloatTensor([r[i] for r in rewards])
             alive_rewards[:, i] = torch.FloatTensor([r[i] for r in rewards])
         alive_rewards -= baseline
-        T = len(rewards)
+        T = len(actions)
+        # print('len(rewards)', len(rewards))
+        # print('len(actions)', len(actions))
+        # print('len(alive_masks)',len(alive_masks))
         for t in range(T):
-            batch_size = alive_rewards.size()[0]
+            # print('len(alive_rewards)', len(alive_rewards))
+            _batch_size = alive_rewards.size()[0]
             agent = 0 if t % 2 == 0 else 1
-            for action in actions[t]:
-                action.reinforce(alive_rewards[:, agent].contiguous().view(batch_size, 1))
+            if len(actions[t]) > 0:
+                for action in actions[t]:
+                    # print('action.size()', action.size())
+                    action.reinforce(alive_rewards[:, agent].contiguous().view(_batch_size, 1))
             nodes_by_agent[agent] += actions[t]
             mask = alive_masks[t]
             # if enable_cuda:
@@ -461,13 +468,19 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
                 autograd.backward(nodes_by_agent[i], len(nodes_by_agent[i]) * [None])
                 agent_opts[i].step()
 
-        rewards_sum += all_rewards.mean(0)
+        rewards_sum += all_rewards.sum(0)
         baseline = 0.7 * baseline + 0.3 * all_rewards.mean()
-
         count_sum += batch_size
+
         if render:
-            print('episode %s avg rewards %.2f %.2f b=%.2f' % (
-                episode, rewards_sum[0] / count_sum, rewards_sum[1] / count_sum, baseline))
+            time_since_last = time.time() - last_print
+            print('episode %s avg rewards %.2f %.2f b=%.2f games/sec %.1f' % (
+                episode,
+                rewards_sum[0] / count_sum,
+                rewards_sum[1] / count_sum,
+                baseline,
+                count_sum / time_since_last
+            ))
             f_log.write(json.dumps({
                 'episode': episode,
                 'avg_reward_0': rewards_sum[0] / count_sum,
