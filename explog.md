@@ -59,3 +59,42 @@ saved model
 ```
 => seems to be in a local miminum ...
 
+after ~150,000 batches of 128 games, still in local, 55de45b (see also [images/55de45b.png]):
+```
+episode 147066 avg rewards 0.74 0.74 b=0.73 games/sec 464.4 avg steps 2.0
+saved model
+  N=7
+  pool=5,3,1
+  util[0] 5,4,6
+  util[1] 5,10,9
+  A t=0.0 u=883613 p=0,0,0
+  B t=1.0 u=884829 p=1,1,0
+  steps=2 reward=1.00
+episode 147080 avg rewards 0.73 0.73 b=0.72 games/sec 540.8 avg steps 2.0
+  N=10
+  pool=4,1,3
+  util[0] 9,4,3
+  util[1] 10,6,9
+  A t=0.0 u=161003 p=0,0,0
+  B t=1.0 u=556962 p=1,1,0
+  steps=2 reward=1.00
+episode 147093 avg rewards 0.72 0.72 b=0.73 games/sec 469.5 avg steps 2.0
+saved model
+  N=9
+  pool=0,4,2
+  util[0] 5,0,4
+  util[1] 5,10,4
+  A t=0.0 u=381030 p=0,0,0
+  B t=1.0 u=752419 p=1,1,0
+  steps=2 reward=1.00
+episode 147105 avg rewards 0.72 0.72 b=0.73 games/sec 459.1 avg steps 2.0
+saved model
+  N=10
+  pool=5,2,1
+  util[0] 2,0,6
+  util[1] 4,1,4
+  A t=0.0 u=276362 p=0,0,0
+  B t=1.0 u=327743 p=1,1,0
+  steps=2 reward=0.93
+episode 147117 avg rewards 0.72 0.72 b=0.72 games/sec 460.2 avg steps 2.0
+```
