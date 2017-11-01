@@ -197,21 +197,22 @@ class AgentModel(nn.Module):
             self.__setattr__('policy%s' % i, proposal_policy)
 
     def forward(self, context, m_prev, prev_proposal):
-        batch_size = context.size()[0]
+        # batch_size = context.size()[0]
         # print('batch_size', batch_size)
         c_h = self.context_net(context)
-        # m_h = self.utterance_net(m_prev)
+        m_h = self.utterance_net(m_prev)
         p_h = self.proposal_net(prev_proposal)
 
-        # h_t = torch.cat([c_h, m_h, p_h], -1)
-        h_t = torch.cat([c_h, c_h, p_h], -1)
-        h_t = Variable(torch.zeros(batch_size, self.embedding_size * 3))
+        h_t = torch.cat([c_h, m_h, p_h], -1)
+        # h_t = torch.cat([c_h, c_h, p_h], -1)
+        # h_t = Variable(torch.zeros(batch_size, self.embedding_size * 3))
         h_t = self.combined_net(h_t)
 
         term_node = self.term_policy(h_t)
         utterance_token_nodes = []
         if self.enable_comms:
             utterance_token_nodes = self.utterance_policy(h_t)
+        # print('len(utterance_token_nodes)', len(utterance_token_nodes))
         proposal_nodes = []
         if self.enable_proposal:
             for proposal_policy in self.proposal_policies:
@@ -238,9 +239,6 @@ def run_episode(
         agent_models,
         batch_size,
         render=False):
-    # batch_size = 5
-    # print('WARNIGN DEBUG CODE PRESENT')
-
     # following take not much memory, not fluffed up yet:
     N = sample_N(batch_size).int()
     pool = sample_items(batch_size)
@@ -249,7 +247,6 @@ def run_episode(
     utilities[:, 1] = sample_utility(batch_size)
     last_proposal = torch.zeros(batch_size, 3).long()
     m_prev = torch.zeros(batch_size, 6).long()
-    # p_prev = torch.zeros(batch_size, 3).long()
 
     games = []
     actions_by_timestep = []
@@ -280,6 +277,11 @@ def run_episode(
             m_prev=Variable(m_prev),
             prev_proposal=Variable(last_proposal)
         )
+        for i in range(6):
+            # print('i', i, 'utterance_nodes[i].data[0][0]', utterance_nodes[i].data[0][0])
+            m_prev[:, i] = utterance_nodes[i].data
+        if render and b_0_present:
+            print('  ' + ''.join([str(s) for s in m_prev[0].view(-1).tolist()]))
 
         actions_t = []
         actions_t.append(term_node)
@@ -287,8 +289,8 @@ def run_episode(
         actions_t += proposal_nodes
         # if render:
         if render and b_0_present:
-            print('  t %s term=%s' % (t, term_node.data[0][0]), end='')
-            print(' thisprop %s,%s,%s' % (
+            print('  term=%s' % term_node.data[0][0], end='')
+            print('  thisprop %s,%s,%s' % (
                 proposal_nodes[0].data[0][0],
                 proposal_nodes[1].data[0][0],
                 proposal_nodes[2].data[0][0]
@@ -300,18 +302,12 @@ def run_episode(
         if t == 0:
             # on first timestep theres no actual proposal yet, so score zero if terminate
             reward_eligible_mask.fill_(0)
-        reward_eligible_idxes = reward_eligible_mask.nonzero().long().view(-1)
+        # reward_eligible_idxes = reward_eligible_mask.nonzero().long().view(-1)
         if reward_eligible_mask.max() > 0:
-            # things we need to do:
-            # - eliminate any that provided invalid proposals (exceeded pool)
-            # - calculate score for each agent
-            # - calculcate max score for each agent
-            # - normalize score
             exceeded_pool, _ = ((last_proposal - pool) > 0).max(1)
             if exceeded_pool.max() > 0:
                 reward_eligible_mask[exceeded_pool.nonzero().long().view(-1)] = 0
 
-        reward_eligible_idxes = reward_eligible_mask.nonzero().long().view(-1)
         if reward_eligible_mask.max() > 0:
             proposer = 1 - agent
             accepter = agent
@@ -320,6 +316,7 @@ def run_episode(
             proposal[:, accepter] = pool - last_proposal
             max_utility, _ = utilities.max(1)
 
+            reward_eligible_idxes = reward_eligible_mask.nonzero().long().view(-1)
             for b in reward_eligible_idxes:
                 rewards = [0, 0]
                 for i in range(2):
