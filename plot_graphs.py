@@ -19,6 +19,16 @@ def plot_reward(logfile, min_y, max_y):
             d = json.loads(line)
             epoch.append(int(d['episode']))
             reward.append(float(d['avg_reward_0']))
+    while len(epoch) > 200:
+        new_epoch = []
+        new_reward = []
+        for n in range(len(epoch) // 2):
+            r = (reward[n * 2] + reward[n * 2 + 1]) / 2
+            e = epoch[n] * 2
+            new_epoch.append(e)
+            new_reward.append(r)
+        epoch = new_epoch
+        reward = new_reward
     if min_y is None:
         min_y = 0
     if max_y is not None:
