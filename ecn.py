@@ -256,18 +256,16 @@ def run_episode(
     alive_games = games.copy()
 
     if render:
-        print('  N[0]=%s' % N[0], end='')
-        print(' pool[0]: %s,%s,%s' % (pool[0][0], pool[0][1], pool[0][2]), end='')
-        print(' util[0]:', end='')
+        print('  N=%s' % N[0])
+        print('  pool=%s,%s,%s' % (pool[0][0], pool[0][1], pool[0][2]))
+        # print('  util:', end='')
         for i in range(2):
-            print(' %s,%s,%s' % (utilities[0][i][0], utilities[0][i][1], utilities[0][i][2]), end='')
-        print('')
+            print('  util[%s] %s,%s,%s' % (i, utilities[0][i][0], utilities[0][i][1], utilities[0][i][2]))
+        # print('')
     b_0_present = True
     for t in range(10):
         agent = 0 if t % 2 == 0 else 1
         batch_size = len(alive_games)
-        if render:
-            print('batch_size', batch_size)
         utility = utilities[:, agent]
 
         c = torch.cat([pool, utility], 1)
@@ -280,21 +278,24 @@ def run_episode(
         for i in range(6):
             # print('i', i, 'utterance_nodes[i].data[0][0]', utterance_nodes[i].data[0][0])
             m_prev[:, i] = utterance_nodes[i].data
-        if render and b_0_present:
-            print('  ' + ''.join([str(s) for s in m_prev[0].view(-1).tolist()]))
 
         actions_t = []
         actions_t.append(term_node)
         actions_t += utterance_nodes
         actions_t += proposal_nodes
         # if render:
+        # if render:
+            # print('batch_size', batch_size)
         if render and b_0_present:
-            print('  term=%s' % term_node.data[0][0], end='')
-            print('  thisprop %s,%s,%s' % (
+            speaker = 'A' if agent == 0 else 'B'
+            print('  %s t=%s' % (speaker, term_node.data[0][0]), end='')
+            print(' u=' + ''.join([str(s) for s in m_prev[0].view(-1).tolist()]), end='')
+            print(' p=%s,%s,%s' % (
                 proposal_nodes[0].data[0][0],
                 proposal_nodes[1].data[0][0],
                 proposal_nodes[2].data[0][0]
-            ))
+            ), end='')
+            print('')
         actions_by_timestep.append(actions_t)
 
         # calcualate rewards for any that just finished
@@ -321,8 +322,8 @@ def run_episode(
                 rewards = [0, 0]
                 for i in range(2):
                     rewards[i] = utilities[b, i].dot(proposal[b, i])
-                if render and b_0_present and b == 0:
-                    print('rewards', rewards)
+                # if render and b_0_present and b == 0:
+                #     print('rewards', rewards)
 
                 if prosocial:
                     total_actual_reward = np.sum(rewards)
@@ -332,7 +333,7 @@ def run_episode(
                         scaled_reward = total_actual_reward / total_possible_reward
                     rewards = [scaled_reward, scaled_reward]
                     if render and b_0_present and b == 0:
-                        print('tot act %.1f tot pos %.1f scal %.1f' % (total_actual_reward, total_possible_reward, scaled_reward))
+                        print('  steps=%s reward=%.2f' % (t + 1, scaled_reward))
                 else:
                     for i in range(2):
                         max_possible = utilities[b, i].dot(pool)
@@ -340,11 +341,11 @@ def run_episode(
                             rewards[i] /= max_possible
 
                 alive_games[b]['rewards'] = rewards
-                if render and b_0_present and b == 0:
-                    print('  rewards', rewards)
+                # if render and b_0_present and b == 0:
+                #     print('  rewards', rewards)
 
-        if render and b_0_present:
-            print('  term[0]', term_node.data.view(batch_size)[0])
+        # if render and b_0_present:
+        #     print('  term[0]', term_node.data.view(batch_size)[0])
         still_alive_mask = 1 - term_node.data.view(batch_size).clone().byte()
         finished_N = t >= N
         still_alive_mask[finished_N] = 0
@@ -379,8 +380,8 @@ def run_episode(
             new_alive_games.append(alive_games[i])
         alive_games = new_alive_games
 
-    if render:
-        print('  num steps ', games[0]['steps'], 'rewards:', games[0]['rewards'])
+    # if render:
+    #     print('  steps=%s' % games[0]['steps'])
     return actions_by_timestep, [g['rewards'] for g in games], alive_masks
 
 
