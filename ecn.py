@@ -117,7 +117,7 @@ class TermPolicy(nn.Module):
     def forward(self, x):
         x = self.h1(x)
         x = F.sigmoid(x)
-        print('x[0]', x[0])
+        # print('x[0]', x[0])
         out_node = torch.bernoulli(x)
         return out_node
 
@@ -175,8 +175,9 @@ class ProposalPolicy(nn.Module):
 
 
 class AgentModel(nn.Module):
-    def __init__(self, enable_comms, enable_proposal):
+    def __init__(self, enable_comms, enable_proposal, embedding_size=100):
         super().__init__()
+        self.embedding_size = embedding_size
         self.enable_comms = enable_comms
         self.enable_proposal = enable_proposal
         self.context_net = ContextNet()
@@ -196,12 +197,17 @@ class AgentModel(nn.Module):
             self.__setattr__('policy%s' % i, proposal_policy)
 
     def forward(self, context, m_prev, p_prev):
-        c_h = self.context_net(context)
-        m_h = self.utterance_net(m_prev)
-        p_h = self.proposal_net(p_prev)
+        batch_size = context.size()[0]
+        # print('batch_size', batch_size)
+        # c_h = self.context_net(context)
+        # m_h = self.utterance_net(m_prev)
+        # p_h = self.proposal_net(p_prev)
 
-        h_t = torch.cat([c_h, m_h, p_h], -1)
-        h_t = self.combined_net(h_t)
+        # h_t = torch.cat([c_h, m_h, p_h], -1)
+        # h_t = self.combined_net(h_t)
+        # h_t.fill_(0)
+        # h_t = Variable(torch.rand(batch_size, self.embedding_size))
+        h_t = Variable(torch.zeros(batch_size, self.embedding_size))
 
         term_node = self.term_policy(h_t)
         utterance_token_nodes = []
@@ -238,6 +244,7 @@ def run_episode(
 
     # following take not much memory, not fluffed up yet:
     N = sample_N(batch_size).int()
+    # N_actual = sample_N(batch_size).int()
     pool = sample_items(batch_size)
     utilities = torch.zeros(batch_size, 2, 3).long()
     utilities[:, 0] = sample_utility(batch_size)
@@ -253,7 +260,7 @@ def run_episode(
     actions_by_timestep = []
     alive_masks = []
     for b in range(batch_size):
-        games.append({'rewards': [0, 0]})
+        games.append({'rewards': [0, 0], 'num_steps': 0})
     alive_games = games.copy()
 
     if render:
@@ -272,6 +279,7 @@ def run_episode(
         utility = utilities[:, agent]
 
         c = torch.cat([pool, utility], 1)
+        # print('c.size()', c.size())
         agent_model = agent_models[agent]
         term_node, utterance_nodes, proposal_nodes = agent_model(
             context=Variable(c),
@@ -298,12 +306,12 @@ def run_episode(
         if t == 0:
             # on first timestep theres no actual proposal yet, so score zero if terminate
             reward_eligible_mask.fill_(0)
-        if render and b_0_present:
-            print('reward_eligible_mask[0]', reward_eligible_mask[0])
+        # if render and b_0_present:
+        #     print('reward_eligible_mask[0]', reward_eligible_mask[0])
         reward_eligible_idxes = reward_eligible_mask.nonzero().long().view(-1)
-        if render and b_0_present:
-            print('last_proposal[0]', last_proposal[0])
-            print('pool[0]', pool[0])
+        # if render and b_0_present:
+        #     print('last_proposal[0]', last_proposal[0])
+        #     print('pool[0]', pool[0])
         if reward_eligible_mask.max() > 0:
             # things we need to do:
             # - eliminate any that provided invalid proposals (exceeded pool)
@@ -315,8 +323,8 @@ def run_episode(
             exceeded_pool, _ = ((last_proposal - pool) > 0).max(1)
             if exceeded_pool.max() > 0:
                 reward_eligible_mask[exceeded_pool.nonzero().long().view(-1)] = 0
-        if render and b_0_present:
-            print('reward_eligible_mask[0]', reward_eligible_mask[0])
+        # if render and b_0_present:
+        #     print('reward_eligible_mask[0]', reward_eligible_mask[0])
 
         reward_eligible_idxes = reward_eligible_mask.nonzero().long().view(-1)
         if reward_eligible_mask.max() > 0:
@@ -326,11 +334,11 @@ def run_episode(
             proposal[:, proposer] = last_proposal
             proposal[:, accepter] = pool - last_proposal
             max_utility, _ = utilities.max(1)
-            if render and b_0_present:
+            # if render and b_0_present:
                 # print('proposal[:, proposer]', proposal[:, proposer])
-                print('proposal[:, proposer]', proposal[0, proposer].view(1, -1))
-                print('proposal[:, accepter]', proposal[0, accepter].view(1, -1))
-                print('max_utility', max_utility[0])
+                # print('proposal[:, proposer]', proposal[0, proposer].view(1, -1))
+                # print('proposal[:, accepter]', proposal[0, accepter].view(1, -1))
+                # print('max_utility', max_utility[0])
 
             for b in reward_eligible_idxes:
                 rewards = [0, 0]
@@ -359,11 +367,16 @@ def run_episode(
                     print('  rewards', rewards)
 
         if render and b_0_present:
-            print('  term', term_node.data.view(batch_size)[0])
+            print('  term[0]', term_node.data.view(batch_size)[0])
         still_alive_mask = 1 - term_node.data.view(batch_size).clone().byte()
         finished_N = t >= N
         still_alive_mask[finished_N] = 0
         alive_masks.append(still_alive_mask)
+
+        dead_idxes = (1 - still_alive_mask).nonzero().long().view(-1)
+        for b in dead_idxes:
+            alive_games[b]['steps'] = t + 1
+
         if still_alive_mask.max() == 0:
             break
 
@@ -386,11 +399,13 @@ def run_episode(
         new_alive_games = []
         for i in still_alive_idxes:
             new_alive_games.append(alive_games[i])
+        # else:
+        #     alive_games[0]['steps'] = t + 1
         alive_games = new_alive_games
 
     # print('games', games)
     if render:
-        print('  reward:', games[0]['rewards'])
+        print('  num steps ', games[0]['steps'], 'rewards:', games[0]['rewards'])
     return actions_by_timestep, [g['rewards'] for g in games], alive_masks
 
 
@@ -455,14 +470,19 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
         # print('alive_rewards', alive_rewards)
         # asdfsdf
         T = len(rewards)
+        # print('-----------')
         for t in range(T):
-            if render:
-                print('t', t)
+            # if render:
+            #     print('t', t)
             # print('alive_rewards', alive_rewards)
+            batch_size = alive_rewards.size()[0]
+            # print('batch_size', batch_size)
             agent = 0 if t % 2 == 0 else 1
             for action in actions[t]:
                 # print('alive_rewards[:, agent]', alive_rewards[:, agent])
-                action.reinforce(alive_rewards[:, agent].contiguous().view(-1, 1))
+                # print('action.size()', action.size())
+                # print('alive_rewards[:, agent].size()', alive_rewards[:, agent].size())
+                action.reinforce(alive_rewards[:, agent].contiguous().view(batch_size, 1))
             nodes_by_agent[agent] += actions[t]
             mask = alive_masks[t]
             # if enable_cuda:
@@ -483,7 +503,7 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
 
         count_sum += batch_size
         if render:
-            print('episode %s avg rewards %.1f %.1f b=%.1f' % (
+            print('episode %s avg rewards %.2f %.2f b=%.2f' % (
                 episode, rewards_sum[0] / count_sum, rewards_sum[1] / count_sum, baseline))
             f_log.write(json.dumps({
                 'episode': episode,
