@@ -199,11 +199,12 @@ class AgentModel(nn.Module):
     def forward(self, context, m_prev, p_prev):
         batch_size = context.size()[0]
         # print('batch_size', batch_size)
-        # c_h = self.context_net(context)
+        c_h = self.context_net(context)
         # m_h = self.utterance_net(m_prev)
         # p_h = self.proposal_net(p_prev)
 
         # h_t = torch.cat([c_h, m_h, p_h], -1)
+        h_t = torch.cat([c_h, c_h, c_h], -1)
         h_t = Variable(torch.zeros(batch_size, self.embedding_size * 3))
         h_t = self.combined_net(h_t)
 
