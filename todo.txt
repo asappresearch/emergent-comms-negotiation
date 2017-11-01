@@ -1,6 +1,5 @@
 - add entropy regularization
-- cudaify
-- add in game length to logs somehow
+- (cudaify)
 
 done:
 - add reward
@@ -18,3 +17,4 @@ done:
 - add backward batching
 - add utterance back into net
 - print example utterances/conversations
+- add in game length to logs somehow
