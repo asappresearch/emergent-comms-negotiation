@@ -238,144 +238,159 @@ def run_episode(
     # following take not much memory, not fluffed up yet:
     N = sample_N(batch_size).int()
     pool = sample_items(batch_size)
-    utilities = torch.zeros(2, batch_size, 3).long()
-    utilities[0] = sample_utility(batch_size)
-    utilities[1] = sample_utility(batch_size)
+    utilities = torch.zeros(batch_size, 2, 3).long()
+    utilities[:, 0] = sample_utility(batch_size)
+    utilities[:, 1] = sample_utility(batch_size)
     last_proposal = torch.zeros(batch_size, 3).long()
     m_prev = torch.zeros(batch_size, 6).long()
     p_prev = torch.zeros(batch_size, 3).long()
-    alive = torch.zeros(batch_size).fill_(1).byte()
-    terminated_ok = torch.zeros(batch_size).byte()
-    rewards = torch.zeros(batch_size)
+    # alive = torch.zeros(batch_size).fill_(1).byte()
+    # terminated_ok = torch.zeros(batch_size).byte()
+    # rewards = torch.zeros(batch_size)
 
-    nodes_by_agent = [[], []]
+    games = []
+    # states = []
+    actions_by_timestep = []
+    alive_masks = []
+    for b in range(batch_size):
+        games.append({'reward_0': 0, 'reward_1': 0})
+    alive_games = games.copy()
+
+    # nodes_by_agent = [[], []]
     if render:
         print('  N=%s' % N, end='')
-        print(' pool: %s,%s,%s' % (pool[0], pool[1], pool[2]), end='')
+        print(' pool: %s,%s,%s' % (pool[0][0], pool[0][1], pool[0][2]), end='')
         print(' util:', end='')
         for i in range(2):
-            print(' %s,%s,%s' % (utilities[i][0], utilities[i][2], utilities[i][2]), end='')
+            print(' %s,%s,%s' % (utilities[0][i][0], utilities[0][i][1], utilities[0][i][2]), end='')
         print('')
     for t in range(10):
         # kill any that have reached N
         # so, lets say N is 2, and t is 2, then we want to kill that games,
         # but if t is 1, we wouldnt (its the second game)
-        reached_N_idxes = alive & (t >= N)
-        alive[reached_N_idxes] = 0
-
         agent = 1 if t % 2 else 0
-        batch_idxes = alive.nonzero().long().view(-1)
-        print('batch_idxes', batch_idxes)
-        batch_size = batch_idxes.size()[0]
+        batch_size = len(alive_games)
+        # batch_idxes = alive.nonzero().long().view(-1)
+        # print('batch_idxes', batch_idxes)
+        # batch_size = batch_idxes.size()[0]
+        # print('----------')
         print('batch_size', batch_size)
-        N_batch = N[batch_idxes]
-        pool_batch = pool[batch_idxes]
-        utility_batch = utilities[agent][batch_idxes]
-        last_proposal_batch = last_proposal[batch_idxes]
-        m_prev_batch = m_prev[batch_idxes]
-        p_prev_batch = p_prev[batch_idxes]
+        # N_batch = N[batch_idxes]
+        # pool_batch = pool[batch_idxes]
+        utility = utilities[:, agent]
+        # utility_batch = utilities[agent][batch_idxes]
+        # last_proposal_batch = last_proposal[batch_idxes]
+        # m_prev_batch = m_prev[batch_idxes]
+        # p_prev_batch = p_prev[batch_idxes]
 
-        c_batch = torch.cat([pool_batch, utility_batch], 1)
+        c = torch.cat([pool, utility], 1)
+        # print('c.size', c.size())
+        # print('m_prev.size', m_prev.size())
+        # print('p_prev.size', p_prev.size())
         agent_model = agent_models[agent]
-        term_node_batch, utterance_nodes_batch, proposal_nodes_batch = agent_model(
-            context=Variable(c_batch),
-            m_prev=Variable(m_prev_batch),
-            p_prev=Variable(p_prev_batch)
+        term_node, utterance_nodes, proposal_nodes = agent_model(
+            context=Variable(c),
+            m_prev=Variable(m_prev),
+            p_prev=Variable(p_prev)
         )
-        nodes_by_agent[agent].append(term_node_batch)
-        nodes_by_agent[agent] += utterance_nodes_batch
-        nodes_by_agent[agent] += proposal_nodes_batch
+
+        actions_t = []
+        actions_t.append(term_node)
+        actions_t += utterance_nodes
+        actions_t += proposal_nodes
         if render:
-            print('  t %s term=%s' % (t, term_node_batch.data[0][0]), end='')
+            print('  t %s term=%s' % (t, term_node.data[0][0]), end='')
             print(' prop %s,%s,%s' % (
-                proposal_nodes_batch[0].data[0][0],
-                proposal_nodes_batch[1].data[0][0],
-                proposal_nodes_batch[2].data[0][0]
+                proposal_nodes[0].data[0][0],
+                proposal_nodes[1].data[0][0],
+                proposal_nodes[2].data[0][0]
             ))
+        actions_by_timestep.append(actions_t)
 
-        alive[batch_idxes] = (1 - term_node_batch.data.view(batch_size)).byte()
-        terminated_ok[batch_idxes] = term_node_batch.data.view(batch_size).byte()
-
-        local_still_alive_idexes = (1 - term_node_batch.data.view(batch_size)).nonzero().long().view(-1)
-        if len(local_still_alive_idexes.size()) > 0 and local_still_alive_idexes.size()[0] > 0:
-            # update last_proposal
-            this_proposal = torch.LongTensor(batch_size, 3)
-            for p in range(3):
-                this_proposal[:, p] = proposal_nodes_batch[p].data
-            last_proposal_indexes = batch_idxes[local_still_alive_idexes]
-            last_proposal[last_proposal_indexes] = this_proposal[local_still_alive_idexes]
+        # alive[batch_idxes] = (1 - term_node.data.view(batch_size)).byte()
+        terminated_ok = term_node.data.view(batch_size).byte()
 
         # calcualate rewards for any that just finished
-        reward_eligible_batch = term_node_batch.data.view(batch_size).clone()
-
-        reward_eligible_batch_idxes = reward_eligible_batch.nonzero().long().view(-1)
-        print('reward_eligible_batch', reward_eligible_batch)
-        if len(reward_eligible_batch_idxes.size()) > 0 and reward_eligible_batch_idxes.size()[0] > 0:
+        reward_eligible_mask = term_node.data.view(batch_size).clone().byte()
+        reward_eligible_idxes = reward_eligible_mask.nonzero().long().view(-1)
+        # print('reward_eligible_mask', reward_eligible_mask)
+        if reward_eligible_mask.max() > 0:
             # things we need to do:
             # - eliminate any that provided invalid proposals (exceeded pool)
             # - calculate score for each agent
             # - calculcate max score for each agent
             # - normalize score
-            # print('WARNING DEBUG CODE')
-            # last_proposal_batch[reward_eligible_batch_idxes] = 3
-            print('last_proposal', last_proposal_batch[reward_eligible_batch_idxes])
-            print(pool_batch[reward_eligible_batch_idxes])
-            exceeded_pool, _ = ((last_proposal_batch[reward_eligible_batch_idxes] - pool_batch[reward_eligible_batch_idxes]) > 0).max(1)
-            print('exceeded_pool', exceeded_pool)
+            # print('last_proposal', last_proposal[reward_eligible_idxes])
+            print(pool[reward_eligible_idxes])
+            exceeded_pool, _ = ((last_proposal - pool) > 0).max(1)
+            # print('exceeded_pool', exceeded_pool)
             if exceeded_pool.max() > 0:
-                reward_eligible_batch[exceeded_pool.nonzero().long().view(-1)] = 0
-            print('reward_eligible_batch', reward_eligible_batch)
+                reward_eligible_mask[exceeded_pool.nonzero().long().view(-1)] = 0
+            # print('reward_eligible_mask', reward_eligible_mask)
 
-        reward_eligible_batch_idxes = reward_eligible_batch.nonzero().long().view(-1)
-        print('reward_eligible_batch', reward_eligible_batch)
-        if len(reward_eligible_batch_idxes.size()) > 0 and reward_eligible_batch_idxes.size()[0] > 0:
+        reward_eligible_idxes = reward_eligible_mask.nonzero().long().view(-1)
+        # print('reward_eligible_mask', reward_eligible_mask)
+        if reward_eligible_mask.max() > 0:
             proposer = 1 - agent
-            proposer_utility_batch = utilities[proposer][batch_idxes]
-            print('proposer_utility_batch', proposer_utility_batch)
-            print('proposer_utility_batch[reward_eligible_batch_idxes].size()', proposer_utility_batch[reward_eligible_batch_idxes].size())
-            print('pool_batch[reward_eligible_batch_idxes].size()', pool_batch[reward_eligible_batch_idxes].size())
-            """
-            so we have the following matrices
-               utility = N x P
-            where N is number of eligible games, and P is number of different item types
+            accepter = agent
+            proposer_utility = utilities[:, proposer]
+            # print('proposer_utility', proposer_utility)
+            # print('proposer_utility[reward_eligible_idxes].size()', proposer_utility[reward_eligible_idxes].size())
+            # print('pool[reward_eligible_idxes].size()', pool[reward_eligible_idxes].size())
+            print(reward_eligible_idxes)
+            for b in reward_eligible_idxes:
+                # print('-------')
+                # print('b', b)
+                # print('. proposer_utility[b]', proposer_utility[b])
+                # print('. pool[b]', pool[b])
+                proposer_reward = proposer_utility[b].dot(pool[b])
+                alive_games[b]['reward_%s' % proposer] = proposer_reward
+                # print('. proposer_reward', proposer_reward)
 
-            and we have:
-               pool = N x P
+                accepter_reward = utility[b].dot(pool[b])
+                # alive_games[b]['reward_%s' % accepter] = accepter_reward
+                # print('')
+            # print('alive_games', alive_games)
+            # asdfas
 
-            we want as result:
-               reward = N
-
-            or:
-               reward = N x 1
-
-            for each n in (0, N-1), we want to calculate
-               pool[n] . reward[n]
-
-            if want to use matrix, we'd probably need to do diag, which sounds inefficient
-
-            so, let's just loop over, and do the backprop...
-            """
-            print(reward_eligible_batch_idxes)
-            for b, batch_idx in enumerate(reward_eligible_batch_idxes):
-                print('-------')
-                print(b, batch_idx)
-                print('. proposer_utility_batch[batch_idx]', proposer_utility_batch[batch_idx])
-                print('. pool_batch[batch_idx]', pool_batch[batch_idx])
-                proposer_reward = proposer_utility_batch[batch_idx].dot(pool_batch[batch_idx])
-                print('. proposer_reward', proposer_reward)
-                print('')
-            # proposer_reward_batch = proposer_utility_batch[reward_eligible_batch_idxes] @ \
-            #     pool_batch[reward_eligible_batch_idxes].transpose(0, 1)
-            # print('proposer_reward_batch', proposer_reward_batch)
-            # proposer_reward_batch[reward_eligible_batch_idxes]
-            asdfas
-
-        if len(local_still_alive_idexes.size()) == 0 or local_still_alive_idexes.size()[0] == 0:
-            # all games finished
+        still_alive_mask = 1 - term_node.data.view(batch_size).clone().byte()
+        finished_N = t >= N
+        still_alive_mask[finished_N] = 0
+        # print('still_alive_mask', still_alive_mask)
+        alive_masks.append(still_alive_mask)
+        if still_alive_mask.max() == 0:
             break
 
-    asdfasdf
-    rewards = [0, 0]
+        this_proposal = torch.LongTensor(batch_size, 3)
+        for p in range(3):
+            this_proposal[:, p] = proposal_nodes[p].data
+        last_proposal = this_proposal
+
+        still_alive_idxes = still_alive_mask.nonzero().long().view(-1)
+        # print('still_alive_idxes', still_alive_idxes)
+        pool = pool[still_alive_idxes]
+        last_proposal = last_proposal[still_alive_idxes]
+        utilities = utilities[still_alive_idxes]
+        m_prev = m_prev[still_alive_idxes]
+        p_prev = p_prev[still_alive_idxes]
+        N = N[still_alive_idxes]
+
+        # l = locals()
+        # for name in ['pool', 'last_proposal', 'utilities', 'm_prev', 'p_prev', 'N']:
+        #     l[name] = l[name][still_alive_idxes]
+        #     print('l[name].size()', l[name].size())
+            # exec('%s = %s[still_alive_idxes]' % (name, name))
+            # tensor = tensor[still_alive_idxes]
+        # print('l', l)
+
+        new_alive_games = []
+        for i in still_alive_idxes:
+            new_alive_games.append(alive_games[i])
+        alive_games = new_alive_games
+
+    print('games', games)
+    # asdfasdf
+    # rewards = [0, 0]
     # so, lets say agent is 1, means the previous proposal was
     # by agent 0
     proposing_agent = 1 - agent
