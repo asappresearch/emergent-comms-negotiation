@@ -390,7 +390,7 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
         start_time = time.time() - state['elapsed_time']
         print('loaded model')
     last_print = time.time()
-    rewards_sum = [0, 0]
+    rewards_sum = torch.zeros(2)
     count_sum = 0
     for d in ['logs', 'model_saves']:
         if not path.isdir(d):
@@ -421,6 +421,8 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
             # note to self: just use .clone() or something...
             all_rewards[:, i] = torch.FloatTensor([r[i] for r in rewards])
             alive_rewards[:, i] = torch.FloatTensor([r[i] for r in rewards])
+        alive_rewards -= baseline
+        # print('alive_rewards', alive_rewards)
         # print('alive_rewards', alive_rewards)
         # asdfsdf
         T = len(rewards)
@@ -447,10 +449,9 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
                 autograd.backward(nodes_by_agent[i], len(nodes_by_agent[i]) * [None])
                 agent_opts[i].step()
 
-        # print('np.mean(rewards)', np.mean())
-        # print('all_rewards.mean()', all_rewards.mean())
+        rewards_sum += all_rewards.mean(0)
         baseline = 0.7 * baseline + 0.3 * all_rewards.mean()
-        # adsfadf
+
         count_sum += batch_size
         if render:
             print('episode %s avg rewards %.1f %.1f b=%.1f' % (
@@ -463,7 +464,7 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
             }) + '\n')
             f_log.flush()
             last_print = time.time()
-            rewards_sum = [0, 0]
+            rewards_sum = torch.zeros(2)
             count_sum = 0
         if time.time() - last_save >= 5.0:
             state = {}
