@@ -59,7 +59,7 @@ saved model
 ```
 => seems to be in a local miminum ...
 
-after ~150,000 batches of 128 games, still in local, 55de45b (see also [images/55de45b.png]):
+after ~150,000 batches of 128 games, still in local, 55de45b (see also [images/55de45b.png]) (saved as model model_saves/allnet_noentropy.dat):
 ```
 episode 147066 avg rewards 0.74 0.74 b=0.73 games/sec 464.4 avg steps 2.0
 saved model
