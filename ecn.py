@@ -382,7 +382,7 @@ def run_episode(
 
     # if render:
     #     print('  steps=%s' % games[0]['steps'])
-    return actions_by_timestep, [g['rewards'] for g in games], alive_masks
+    return actions_by_timestep, [g['rewards'] for g in games], [g['steps'] for g in games], alive_masks
 
 
 def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, batch_size):
@@ -410,6 +410,7 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
         print('loaded model')
     last_print = time.time()
     rewards_sum = torch.zeros(2)
+    steps_sum = 0
     count_sum = 0
     for d in ['logs', 'model_saves']:
         if not path.isdir(d):
@@ -426,7 +427,7 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
     while True:
         render = time.time() - last_print >= 3.0
         # render = True
-        actions, rewards, alive_masks = run_episode(
+        actions, rewards, steps, alive_masks = run_episode(
             agent_models=agent_models,
             prosocial=prosocial,
             batch_size=batch_size,
@@ -467,29 +468,34 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
                 agent_opts[i].step()
 
         rewards_sum += all_rewards.sum(0)
+        steps_sum += np.sum(steps)
         baseline = 0.7 * baseline + 0.3 * all_rewards.mean()
         count_sum += batch_size
 
         if render:
             time_since_last = time.time() - last_print
-            print('episode %s avg rewards %.2f %.2f b=%.2f games/sec %.1f' % (
+            print('episode %s avg rewards %.2f %.2f b=%.2f games/sec %.1f avg steps %.1f' % (
                 episode,
                 rewards_sum[0] / count_sum,
                 rewards_sum[1] / count_sum,
                 baseline,
-                count_sum / time_since_last
+                count_sum / time_since_last,
+                steps_sum / count_sum
             ))
             f_log.write(json.dumps({
                 'episode': episode,
                 'avg_reward_0': rewards_sum[0] / count_sum,
                 'avg_reward_1': rewards_sum[1] / count_sum,
+                'avg_steps': steps_sum / count_sum,
+                'games_sec': count_sum / time_since_last,
                 'elapsed': time.time() - start_time
             }) + '\n')
             f_log.flush()
             last_print = time.time()
+            steps_sum = 0
             rewards_sum = torch.zeros(2)
             count_sum = 0
-        if time.time() - last_save >= 5.0:
+        if time.time() - last_save >= 30.0:
             state = {}
             for i in range(2):
                 state['agent%s' % i] = {}

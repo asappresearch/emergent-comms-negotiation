@@ -1,5 +1,6 @@
 - add entropy regularization
 - cudaify
+- add in game length to logs somehow
 
 done:
 - add reward
