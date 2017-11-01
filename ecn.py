@@ -244,7 +244,6 @@ def run_episode(
 
     # following take not much memory, not fluffed up yet:
     N = sample_N(batch_size).int()
-    # N_actual = sample_N(batch_size).int()
     pool = sample_items(batch_size)
     utilities = torch.zeros(batch_size, 2, 3).long()
     utilities[:, 0] = sample_utility(batch_size)
@@ -252,9 +251,6 @@ def run_episode(
     last_proposal = torch.zeros(batch_size, 3).long()
     m_prev = torch.zeros(batch_size, 6).long()
     p_prev = torch.zeros(batch_size, 3).long()
-    # alive = torch.zeros(batch_size).fill_(1).byte()
-    # terminated_ok = torch.zeros(batch_size).byte()
-    # rewards = torch.zeros(batch_size)
 
     games = []
     actions_by_timestep = []
@@ -279,7 +275,6 @@ def run_episode(
         utility = utilities[:, agent]
 
         c = torch.cat([pool, utility], 1)
-        # print('c.size()', c.size())
         agent_model = agent_models[agent]
         term_node, utterance_nodes, proposal_nodes = agent_model(
             context=Variable(c),
@@ -306,25 +301,16 @@ def run_episode(
         if t == 0:
             # on first timestep theres no actual proposal yet, so score zero if terminate
             reward_eligible_mask.fill_(0)
-        # if render and b_0_present:
-        #     print('reward_eligible_mask[0]', reward_eligible_mask[0])
         reward_eligible_idxes = reward_eligible_mask.nonzero().long().view(-1)
-        # if render and b_0_present:
-        #     print('last_proposal[0]', last_proposal[0])
-        #     print('pool[0]', pool[0])
         if reward_eligible_mask.max() > 0:
             # things we need to do:
             # - eliminate any that provided invalid proposals (exceeded pool)
             # - calculate score for each agent
             # - calculcate max score for each agent
             # - normalize score
-            # print('last_proposal', last_proposal[reward_eligible_idxes])
-            # print(pool[reward_eligible_idxes])
             exceeded_pool, _ = ((last_proposal - pool) > 0).max(1)
             if exceeded_pool.max() > 0:
                 reward_eligible_mask[exceeded_pool.nonzero().long().view(-1)] = 0
-        # if render and b_0_present:
-        #     print('reward_eligible_mask[0]', reward_eligible_mask[0])
 
         reward_eligible_idxes = reward_eligible_mask.nonzero().long().view(-1)
         if reward_eligible_mask.max() > 0:
@@ -334,11 +320,6 @@ def run_episode(
             proposal[:, proposer] = last_proposal
             proposal[:, accepter] = pool - last_proposal
             max_utility, _ = utilities.max(1)
-            # if render and b_0_present:
-                # print('proposal[:, proposer]', proposal[:, proposer])
-                # print('proposal[:, proposer]', proposal[0, proposer].view(1, -1))
-                # print('proposal[:, accepter]', proposal[0, accepter].view(1, -1))
-                # print('max_utility', max_utility[0])
 
             for b in reward_eligible_idxes:
                 rewards = [0, 0]
@@ -399,11 +380,8 @@ def run_episode(
         new_alive_games = []
         for i in still_alive_idxes:
             new_alive_games.append(alive_games[i])
-        # else:
-        #     alive_games[0]['steps'] = t + 1
         alive_games = new_alive_games
 
-    # print('games', games)
     if render:
         print('  num steps ', games[0]['steps'], 'rewards:', games[0]['rewards'])
     return actions_by_timestep, [g['rewards'] for g in games], alive_masks
@@ -466,35 +444,21 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
             all_rewards[:, i] = torch.FloatTensor([r[i] for r in rewards])
             alive_rewards[:, i] = torch.FloatTensor([r[i] for r in rewards])
         alive_rewards -= baseline
-        # print('alive_rewards', alive_rewards)
-        # print('alive_rewards', alive_rewards)
-        # asdfsdf
         T = len(rewards)
-        # print('-----------')
         for t in range(T):
-            # if render:
-            #     print('t', t)
-            # print('alive_rewards', alive_rewards)
             batch_size = alive_rewards.size()[0]
-            # print('batch_size', batch_size)
             agent = 0 if t % 2 == 0 else 1
             for action in actions[t]:
-                # print('alive_rewards[:, agent]', alive_rewards[:, agent])
-                # print('action.size()', action.size())
-                # print('alive_rewards[:, agent].size()', alive_rewards[:, agent].size())
                 action.reinforce(alive_rewards[:, agent].contiguous().view(batch_size, 1))
             nodes_by_agent[agent] += actions[t]
             mask = alive_masks[t]
             # if enable_cuda:
             #     mask = mask.cuda()
-            # print('mask', mask)
             if mask.max() == 0:
                 break
             alive_rewards = alive_rewards[mask.nonzero().long().view(-1)]
         for i in range(2):
-            # print('nodes_by_agent[i]', nodes_by_agent[i])
             if len(nodes_by_agent[i]) > 0:
-                # print('running step')
                 autograd.backward(nodes_by_agent[i], len(nodes_by_agent[i]) * [None])
                 agent_opts[i].step()
 
