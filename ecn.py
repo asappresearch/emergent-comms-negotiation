@@ -130,7 +130,9 @@ class TermPolicy(nn.Module):
         x = F.sigmoid(x)
         # print('x[0]', x[0])
         out_node = torch.bernoulli(x)
-        return out_node
+        entropy = - (x * x.log()).sum(1).mean()
+        # entropy = entropy.mean()
+        return out_node, entropy
 
 
 class UtterancePolicy(nn.Module):
@@ -189,8 +191,9 @@ class ProposalPolicy(nn.Module):
 
 
 class AgentModel(nn.Module):
-    def __init__(self, enable_comms, enable_proposal, embedding_size=100):
+    def __init__(self, enable_comms, enable_proposal, term_entropy_reg, embedding_size=100):
         super().__init__()
+        self.term_entropy_reg = term_entropy_reg
         self.embedding_size = embedding_size
         self.enable_comms = enable_comms
         self.enable_proposal = enable_proposal
@@ -222,7 +225,9 @@ class AgentModel(nn.Module):
         # h_t = Variable(torch.zeros(batch_size, self.embedding_size * 3))
         h_t = self.combined_net(h_t)
 
-        term_node = self.term_policy(h_t)
+        entropy_sum = 0
+        term_node, entropy = self.term_policy(h_t)
+        entropy_sum += entropy * self.term_entropy_reg
         utterance_token_nodes = []
         if self.enable_comms:
             utterance_token_nodes = self.utterance_policy(h_t)
@@ -232,20 +237,20 @@ class AgentModel(nn.Module):
             for proposal_policy in self.proposal_policies:
                 proposal_node = proposal_policy(h_t)
                 proposal_nodes.append(proposal_node)
-        return term_node, utterance_token_nodes, proposal_nodes
+        return term_node, utterance_token_nodes, proposal_nodes, entropy_sum
 
 
-class Agent(object):
-    """
-    holds model, optimizer, etc
-    """
-    def __init__(self, enable_comms, enable_proposal):
-        self.enable_comms = enable_comms
-        self.enable_proposal = enable_proposal
-        self.model = AgentModel(
-            enable_comms=enable_comms,
-            enable_proposal=enable_proposal)
-        self.opt = optim.Adam(params=self.model.parameters())
+# class Agent(object):
+#     """
+#     holds model, optimizer, etc
+#     """
+#     def __init__(self, enable_comms, enable_proposal):
+#         self.enable_comms = enable_comms
+#         self.enable_proposal = enable_proposal
+#         self.model = AgentModel(
+#             enable_comms=enable_comms,
+#             enable_proposal=enable_proposal)
+#         self.opt = optim.Adam(params=self.model.parameters())
 
 
 def run_episode(
@@ -277,6 +282,7 @@ def run_episode(
             print('  util[%s] %s,%s,%s' % (i, utilities[0][i][0], utilities[0][i][1], utilities[0][i][2]))
         # print('')
     b_0_present = True
+    entropy_sum = 0
     for t in range(10):
         agent = 0 if t % 2 == 0 else 1
         batch_size = len(alive_games)
@@ -284,11 +290,12 @@ def run_episode(
 
         c = torch.cat([pool, utility], 1)
         agent_model = agent_models[agent]
-        term_node, utterance_nodes, proposal_nodes = agent_model(
+        term_node, utterance_nodes, proposal_nodes, _entropy_sum = agent_model(
             context=Variable(c),
             m_prev=Variable(m_prev),
             prev_proposal=Variable(last_proposal)
         )
+        entropy_sum += _entropy_sum
         for i in range(6):
             # print('i', i, 'utterance_nodes[i].data[0][0]', utterance_nodes[i].data[0][0])
             m_prev[:, i] = utterance_nodes[i].data
@@ -394,12 +401,16 @@ def run_episode(
             new_alive_games.append(alive_games[i])
         alive_games = new_alive_games
 
+    for g in games:
+        if 'steps' not in g:
+            g['steps'] = 10
+
     # if render:
     #     print('  steps=%s' % games[0]['steps'])
-    return actions_by_timestep, [g['rewards'] for g in games], [g['steps'] for g in games], alive_masks
+    return actions_by_timestep, [g['rewards'] for g in games], [g['steps'] for g in games], alive_masks, entropy_sum
 
 
-def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, batch_size):
+def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, batch_size, term_entropy_reg):
     if seed is not None:
         np.random.seed(seed)
         torch.manual_seed(seed)
@@ -410,7 +421,8 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
     for i in range(2):
         agent_models.append(AgentModel(
             enable_comms=enable_comms,
-            enable_proposal=enable_proposal))
+            enable_proposal=enable_proposal,
+            term_entropy_reg=term_entropy_reg))
         agent_opts.append(optim.Adam(params=agent_models[i].parameters()))
     if path.isfile(model_file):
         with open(model_file, 'rb') as f:
@@ -441,7 +453,7 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
     while True:
         render = time.time() - last_print >= 3.0
         # render = True
-        actions, rewards, steps, alive_masks = run_episode(
+        actions, rewards, steps, alive_masks, entropy_sum = run_episode(
             agent_models=agent_models,
             prosocial=prosocial,
             batch_size=batch_size,
@@ -461,6 +473,7 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
         # print('len(rewards)', len(rewards))
         # print('len(actions)', len(actions))
         # print('len(alive_masks)',len(alive_masks))
+        entropy_sum.neg().backward(retain_graph=True)
         for t in range(T):
             # print('len(alive_rewards)', len(alive_rewards))
             _batch_size = alive_rewards.size()[0]
@@ -532,6 +545,7 @@ if __name__ == '__main__':
     parser.add_argument('--model-file', type=str, default='model_saves/model.dat')
     parser.add_argument('--batch-size', type=int, default=128)
     parser.add_argument('--seed', type=int, help='optional')
+    parser.add_argument('--term-entropy-reg', type=float, default=0.05)
     parser.add_argument('--disable-proposal', action='store_true')
     parser.add_argument('--disable-comms', action='store_true')
     parser.add_argument('--disable-prosocial', action='store_true')
