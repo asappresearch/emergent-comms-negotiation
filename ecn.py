@@ -44,9 +44,14 @@ class ContextNet(nn.Module):
             num_layers=1)
 
     def forward(self, x):
+        # print('')
+        # print('x.size()', x.size())
         batch_size = x.size()[0]
+        x = x.transpose(0, 1)
         x = self.embedding(x)
-        x = x.view(-1, batch_size, self.embedding_size)
+        # print('x.size()', x.size())
+        # x = x.view(6, batch_size, self.embedding_size)
+        # print('x.size()', x.size())
         state = (
             Variable(torch.zeros(1, batch_size, self.embedding_size)),
             Variable(torch.zeros(1, batch_size, self.embedding_size))
@@ -67,8 +72,9 @@ class UtteranceNet(nn.Module):
 
     def forward(self, x):
         batch_size = x.size()[0]
+        x = x.transpose(0, 1)
         x = self.embedding(x)
-        x = x.view(-1, batch_size, self.embedding_size)
+        # x = x.view(6, batch_size, self.embedding_size)
         state = (
             Variable(torch.zeros(1, 1, self.embedding_size)),
             Variable(torch.zeros(1, 1, self.embedding_size)))
@@ -88,8 +94,13 @@ class ProposalNet(nn.Module):
 
     def forward(self, x):
         batch_size = x.size()[0]
+        x = x.transpose(0, 1)
+        # print('')
+        # print('x.size()', x.size())
         x = self.embedding(x)
-        x = x.view(-1, batch_size, self.embedding_size)
+        # print('x.size()', x.size())
+        # x = x.view(3, batch_size, self.embedding_size)
+        # print('x.size()', x.size())
         state = (
             Variable(torch.zeros(1, batch_size, self.embedding_size)),
             Variable(torch.zeros(1, batch_size, self.embedding_size)))
@@ -138,7 +149,10 @@ class UtterancePolicy(nn.Module):
         self.h1 = nn.Linear(embedding_size, num_tokens)
 
     def forward(self, h_t):
+        # print('')
+        # print('h_t.size()', h_t.size())
         batch_size = h_t.size()[0]
+        # print('batch_size', batch_size)
 
         state = (
             h_t.view(1, batch_size, self.embedding_size),
