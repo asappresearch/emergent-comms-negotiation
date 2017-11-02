@@ -98,3 +98,8 @@ saved model
   steps=2 reward=0.93
 episode 147117 avg rewards 0.72 0.72 b=0.72 games/sec 460.2 avg steps 2.0
 ```
+
+fixed some bugs in lstm, because [seq] and [batch] dimensions were reversed/squished/mangled.
+
+Still gets into a local maximum though, where `A` proposes 0,0,0; and `B` accepts....
+=> probably needs the entropy regularization, to push it to try other options for 'term'
