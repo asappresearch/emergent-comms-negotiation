@@ -164,12 +164,14 @@ class UtterancePolicy(nn.Module):
         # use first token as the initial dummy token
         last_token = torch.zeros(batch_size).long()
         tokens = []
+        # entropy_sum = 0
         while len(tokens) < self.max_len:
             token_onehot = self.onehot[last_token]
             token_onehot = token_onehot.view(1, batch_size, self.num_tokens)
             out, state = self.lstm(Variable(token_onehot), state)
             out = self.h1(out)
             out = F.softmax(out)
+            # _entropy = - (out * out.log())
             token_node = torch.multinomial(out.view(batch_size, self.num_tokens))
             tokens.append(token_node)
             last_token = token_node.data.view(batch_size)
@@ -187,13 +189,19 @@ class ProposalPolicy(nn.Module):
         x = self.h1(x)
         x = F.softmax(x)
         out_node = torch.multinomial(x)
-        return out_node
+        entropy = (- x * x.log()).sum(1).mean()
+        return out_node, entropy
 
 
 class AgentModel(nn.Module):
-    def __init__(self, enable_comms, enable_proposal, term_entropy_reg, embedding_size=100):
+    def __init__(
+            self, enable_comms, enable_proposal,
+            term_entropy_reg,
+            proposal_entropy_reg,
+            embedding_size=100):
         super().__init__()
         self.term_entropy_reg = term_entropy_reg
+        self.proposal_entropy_reg = proposal_entropy_reg
         self.embedding_size = embedding_size
         self.enable_comms = enable_comms
         self.enable_proposal = enable_proposal
@@ -235,8 +243,9 @@ class AgentModel(nn.Module):
         proposal_nodes = []
         if self.enable_proposal:
             for proposal_policy in self.proposal_policies:
-                proposal_node = proposal_policy(h_t)
+                proposal_node, _entropy = proposal_policy(h_t)
                 proposal_nodes.append(proposal_node)
+                entropy_sum += self.proposal_entropy_reg * _entropy
         return term_node, utterance_token_nodes, proposal_nodes, entropy_sum
 
 
@@ -410,7 +419,8 @@ def run_episode(
     return actions_by_timestep, [g['rewards'] for g in games], [g['steps'] for g in games], alive_masks, entropy_sum
 
 
-def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, batch_size, term_entropy_reg):
+def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, batch_size,
+        term_entropy_reg, proposal_entropy_reg):
     if seed is not None:
         np.random.seed(seed)
         torch.manual_seed(seed)
@@ -422,7 +432,9 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
         agent_models.append(AgentModel(
             enable_comms=enable_comms,
             enable_proposal=enable_proposal,
-            term_entropy_reg=term_entropy_reg))
+            term_entropy_reg=term_entropy_reg,
+            proposal_entropy_reg=proposal_entropy_reg
+        ))
         agent_opts.append(optim.Adam(params=agent_models[i].parameters()))
     if path.isfile(model_file):
         with open(model_file, 'rb') as f:
@@ -546,6 +558,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch-size', type=int, default=128)
     parser.add_argument('--seed', type=int, help='optional')
     parser.add_argument('--term-entropy-reg', type=float, default=0.05)
+    parser.add_argument('--proposal-entropy-reg', type=float, default=0.05)
     parser.add_argument('--disable-proposal', action='store_true')
     parser.add_argument('--disable-comms', action='store_true')
     parser.add_argument('--disable-prosocial', action='store_true')
