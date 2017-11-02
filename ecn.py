@@ -513,12 +513,12 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
 
         if render:
             time_since_last = time.time() - last_print
-            print('episode %s avg rewards %.2f %.2f b=%.2f games/sec %.1f avg steps %.1f' % (
+            print('episode %s avg rewards %.2f %.2f b=%.2f games/sec %s avg steps %.2f' % (
                 episode,
                 rewards_sum[0] / count_sum,
                 rewards_sum[1] / count_sum,
                 baseline,
-                count_sum / time_since_last,
+                int(count_sum / time_since_last),
                 steps_sum / count_sum
             ))
             f_log.write(json.dumps({
