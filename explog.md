@@ -271,3 +271,7 @@ episode 4543 avg rewards 0.740 0.740 b=0.749 games/sec 791 avg steps 4.2285
 ```
 
 training graph so far: [images/cfb35e5-gpu.png] and [images/cfb35e5-cpu.png]
+
+commandlines:
+- cpu: `python ecn.py --model-file model_saves/nocomms_sument.dat --disable-comms`
+- gpu: `python ecn.py --model-file model_saves/cuda_nocomms_sument.dat --enable-cuda --disable-comms`
