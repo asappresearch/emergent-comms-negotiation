@@ -170,3 +170,63 @@ fixed multinomial crashbug in 4d628ee65
 turn to looking at the local minimum where first agent proposes all zeros, and second agent immediately accepts.
 
 let's remove comms, to speed up training. trying 4599249 wiht `--disable-comms`, which runs at ~1000 games/second, using cpu.
+
+after a bunch of epochs, using new cudarized version, still in local minimimum:
+```
+episode 156397 avg rewards 0.733 0.733 b=0.734 games/sec 2339 avg steps 0.0000
+  N=7
+  pool=3,5,5
+  util[0] 2,9,4
+  util[1] 4,5,0
+  A t=0.0 u=000000 p=0,0,0
+  B t=1.0 u=000000 p=3,4,1
+  steps=2 reward=0.48
+episode 156453 avg rewards 0.731 0.731 b=0.714 games/sec 2346 avg steps 0.0000
+  N=7
+  pool=0,1,5
+  util[0] 6,8,7
+  util[1] 0,0,9
+  A t=0.0 u=000000 p=0,0,0
+  B t=1.0 u=000000 p=3,4,1
+  steps=2 reward=0.85
+episode 156509 avg rewards 0.727 0.727 b=0.725 games/sec 2342 avg steps 0.0000
+saved model
+  N=9
+  pool=2,0,1
+  util[0] 8,9,5
+  util[1] 10,6,0
+  A t=0.0 u=000000 p=0,0,0
+  B t=1.0 u=000000 p=3,4,1
+  steps=2 reward=0.80
+episode 156564 avg rewards 0.732 0.732 b=0.721 games/sec 2295 avg steps 0.0000
+```
+
+same for cpu version:
+```
+  N=5
+  pool=4,1,2
+  util[0] 3,3,10
+  util[1] 4,3,2
+  A t=0.0 u=000000 p=0,0,0
+  B t=1.0 u=000000 p=2,4,3
+  steps=2 reward=0.59
+episode 126863 avg rewards 0.729 0.729 b=0.725 games/sec 1250 avg steps 2.0000
+  N=6
+  pool=2,5,2
+  util[0] 4,1,3
+  util[1] 7,4,9
+  A t=0.0 u=000000 p=0,0,0
+  B t=1.0 u=000000 p=2,3,3
+  steps=2 reward=1.00
+episode 126894 avg rewards 0.727 0.727 b=0.733 games/sec 1249 avg steps 2.0000
+  N=10
+  pool=5,2,0
+  util[0] 2,6,0
+  util[1] 1,0,5
+  A t=0.0 u=000000 p=0,0,0
+  B t=1.0 u=000000 p=2,3,3
+  steps=2 reward=0.23
+episode 126924 avg rewards 0.734 0.734 b=0.740 games/sec 1234 avg steps 2.0000
+```
+
+Not sure how to fix this. Increase entropy regularization term?

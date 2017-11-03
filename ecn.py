@@ -162,7 +162,7 @@ class TermPolicy(nn.Module):
         super().__init__()
         self.h1 = nn.Linear(embedding_size, 1)
 
-    def forward(self, x, eps=1e-20):
+    def forward(self, x, eps=1e-8):
         x = self.h1(x)
         x = F.sigmoid(x)
         out_node = torch.bernoulli(x)
@@ -221,7 +221,7 @@ class ProposalPolicy(nn.Module):
         self.embedding_size = embedding_size
         self.h1 = nn.Linear(embedding_size, num_counts)
 
-    def forward(self, x, eps=1e-20):
+    def forward(self, x, eps=1e-8):
         x1 = self.h1(x)
         x = F.softmax(x1)
         out_node = torch.multinomial(x)
@@ -578,7 +578,7 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
                 rewards_sum[1] / count_sum,
                 baseline,
                 int(count_sum / time_since_last),
-                steps_sum / count_sum
+                steps_sum / count_sum - 2.0
             ))
             f_log.write(json.dumps({
                 'episode': episode,
