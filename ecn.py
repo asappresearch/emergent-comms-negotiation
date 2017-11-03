@@ -224,8 +224,13 @@ class AgentModel(nn.Module):
             self.__setattr__('policy%s' % i, proposal_policy)
 
     def forward(self, context, m_prev, prev_proposal):
+        batch_size = context.size()[0]
+        # print('batch_size', batch_size)
         c_h = self.context_net(context)
-        m_h = self.utterance_net(m_prev)
+        if self.enable_comms:
+            m_h = self.utterance_net(m_prev)
+        else:
+            m_h = Variable(torch.zeros(batch_size, self.embedding_size))
         p_h = self.proposal_net(prev_proposal)
 
         h_t = torch.cat([c_h, m_h, p_h], -1)
@@ -239,15 +244,17 @@ class AgentModel(nn.Module):
             utterance_token_nodes = self.utterance_policy(h_t)
         # print('len(utterance_token_nodes)', len(utterance_token_nodes))
         proposal_nodes = []
-        if self.enable_proposal:
-            for proposal_policy in self.proposal_policies:
-                proposal_node, _entropy = proposal_policy(h_t)
-                proposal_nodes.append(proposal_node)
-                entropy_loss -= self.proposal_entropy_reg * _entropy
+        # if self.enable_proposal:
+        for proposal_policy in self.proposal_policies:
+            proposal_node, _entropy = proposal_policy(h_t)
+            proposal_nodes.append(proposal_node)
+            entropy_loss -= self.proposal_entropy_reg * _entropy
         return term_node, utterance_token_nodes, proposal_nodes, entropy_loss
 
 
 def run_episode(
+        enable_comms,
+        enable_proposal,
         prosocial,
         agent_models,
         batch_size,
@@ -291,14 +298,22 @@ def run_episode(
         )
         entropy_loss_by_agent[agent] += _entropy_loss
         # entropy_sum += _entropy_sum
-        for i in range(6):
-            # print('i', i, 'utterance_nodes[i].data[0][0]', utterance_nodes[i].data[0][0])
-            m_prev[:, i] = utterance_nodes[i].data
+        if enable_comms:
+            for i in range(6):
+                # print('i', i, 'utterance_nodes[i].data[0][0]', utterance_nodes[i].data[0][0])
+                m_prev[:, i] = utterance_nodes[i].data
+
+        this_proposal = torch.zeros(batch_size, 3).long()
+        for p in range(3):
+            this_proposal[:, p] = proposal_nodes[p].data
+        # print('this_proposal[0]', this_proposal[0])
 
         actions_t = []
         actions_t.append(term_node)
-        actions_t += utterance_nodes
-        actions_t += proposal_nodes
+        if enable_comms:
+            actions_t += utterance_nodes
+        if enable_proposal:
+            actions_t += proposal_nodes
         # if render:
         # if render:
             # print('batch_size', batch_size)
@@ -375,15 +390,12 @@ def run_episode(
             # print('steps', [g['steps'] for g in games])
             break
 
-        this_proposal = torch.LongTensor(batch_size, 3)
-        for p in range(3):
-            this_proposal[:, p] = proposal_nodes[p].data
-        last_proposal = this_proposal
+        # last_proposal = this_proposal
 
         # filter the state through the still alive mask:
         still_alive_idxes = still_alive_mask.nonzero().long().view(-1)
         pool = pool[still_alive_idxes]
-        last_proposal = last_proposal[still_alive_idxes]
+        last_proposal = this_proposal[still_alive_idxes]
         utilities = utilities[still_alive_idxes]
         m_prev = m_prev[still_alive_idxes]
         # p_prev = p_prev[still_alive_idxes]
@@ -452,6 +464,8 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
         render = time.time() - last_print >= 3.0
         # render = True
         actions, rewards, steps, alive_masks, entropy_loss_by_agent = run_episode(
+            enable_comms=enable_comms,
+            enable_proposal=enable_proposal,
             agent_models=agent_models,
             prosocial=prosocial,
             batch_size=batch_size,
@@ -493,7 +507,7 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
 
         if render:
             time_since_last = time.time() - last_print
-            print('episode %s avg rewards %.2f %.2f b=%.2f games/sec %s avg steps %.2f' % (
+            print('episode %s avg rewards %.3f %.3f b=%.3f games/sec %s avg steps %.4f' % (
                 episode,
                 rewards_sum[0] / count_sum,
                 rewards_sum[1] / count_sum,
