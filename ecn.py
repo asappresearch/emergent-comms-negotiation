@@ -42,24 +42,12 @@ class ContextNet(nn.Module):
             input_size=embedding_size,
             hidden_size=embedding_size)
         self.zero_state = None
-        # self.zero_state = (
-        #     Variable(torch.zeros(128, self.embedding_size)),
-        #     Variable(torch.zeros(128, self.embedding_size))
-        # )
 
     def forward(self, x):
-        # print('x.size()', x.size())
         batch_size = x.size()[0]
         seq_len = x.size()[1]
         x = x.transpose(0, 1)
         x = self.embedding(x)
-        # print('x.size()', x.size())
-        # state = (
-        #     Variable(torch.zeros(batch_size, self.embedding_size)),
-        #     Variable(torch.zeros(batch_size, self.embedding_size))
-        # )
-        # if x.is_cuda:
-        #     states = (state[0].cuda(), state[1].cuda)
         if x.is_cuda:
             state = (
                     Variable(torch.cuda.FloatTensor(batch_size, self.embedding_size).fill_(0)),
@@ -72,14 +60,7 @@ class ContextNet(nn.Module):
                 )
 
         for s in range(seq_len):
-            # print('len(state)', len(state))
-            # print('state[0].size()', state[0].size())
-            # print('s', s, 'x.size()', x.size())
             state = self.lstm(x[s], state)
-        # print('state[0]', state[0])
-        # print('self.zero_state[0]', self.zero_state[0])
-        # asdf
-        # return state[0].view(batch_size, self.embedding_size)
         return state[0]
 
 
@@ -107,10 +88,8 @@ class UtteranceNet(nn.Module):
                     Variable(torch.zeros(batch_size, self.embedding_size)),
                     Variable(torch.zeros(batch_size, self.embedding_size))
                 )
-        # x, state = self.lstm(x, state)
         for s in range(seq_len):
             state = self.lstm(x[s], state)
-        # return state[0].view(batch_size, self.embedding_size)
         return state[0]
 
 
@@ -138,10 +117,8 @@ class ProposalNet(nn.Module):
                     Variable(torch.zeros(batch_size, self.embedding_size)),
                     Variable(torch.zeros(batch_size, self.embedding_size))
                 )
-        # x, state = self.lstm(x, state)
         for s in range(seq_len):
             state = self.lstm(x[s], state)
-        # return state[0].view(batch_size, self.embedding_size)
         return state[0]
 
 
@@ -187,10 +164,7 @@ class UtterancePolicy(nn.Module):
         self.h1 = nn.Linear(embedding_size, num_tokens)
 
     def forward(self, h_t):
-        # print('')
-        # print('h_t.size()', h_t.size())
         batch_size = h_t.size()[0]
-        # print('batch_size', batch_size)
 
         state = (
             h_t.view(1, batch_size, self.embedding_size),
@@ -200,14 +174,12 @@ class UtterancePolicy(nn.Module):
         # use first token as the initial dummy token
         last_token = torch.zeros(batch_size).long()
         tokens = []
-        # entropy_sum = 0
         while len(tokens) < self.max_len:
             token_onehot = self.onehot[last_token]
             token_onehot = token_onehot.view(1, batch_size, self.num_tokens)
             out, state = self.lstm(Variable(token_onehot), state)
             out = self.h1(out)
             out = F.softmax(out)
-            # _entropy = - (out * out.log())
             token_node = torch.multinomial(out.view(batch_size, self.num_tokens))
             tokens.append(token_node)
             last_token = token_node.data.view(batch_size)
@@ -280,9 +252,7 @@ class AgentModel(nn.Module):
         utterance_token_nodes = []
         if self.enable_comms:
             utterance_token_nodes = self.utterance_policy(h_t)
-        # print('len(utterance_token_nodes)', len(utterance_token_nodes))
         proposal_nodes = []
-        # if self.enable_proposal:
         for proposal_policy in self.proposal_policies:
             proposal_node, _entropy = proposal_policy(h_t)
             proposal_nodes.append(proposal_node)
@@ -324,10 +294,8 @@ def run_episode(
     if render:
         print('  N=%s' % N[0])
         print('  pool=%s,%s,%s' % (pool[0][0], pool[0][1], pool[0][2]))
-        # print('  util:', end='')
         for i in range(2):
             print('  util[%s] %s,%s,%s' % (i, utilities[0][i][0], utilities[0][i][1], utilities[0][i][2]))
-        # print('')
     b_0_present = True
     entropy_loss_by_agent = [Variable(torch.zeros(1)), Variable(torch.zeros(1))]
     if enable_cuda:
@@ -346,10 +314,8 @@ def run_episode(
             prev_proposal=Variable(last_proposal)
         )
         entropy_loss_by_agent[agent] += _entropy_loss
-        # entropy_sum += _entropy_sum
         if enable_comms:
             for i in range(6):
-                # print('i', i, 'utterance_nodes[i].data[0][0]', utterance_nodes[i].data[0][0])
                 m_prev[:, i] = utterance_nodes[i].data
 
         this_proposal = torch.zeros(batch_size, 3).long()
@@ -357,7 +323,6 @@ def run_episode(
             this_proposal = this_proposal.cuda()
         for p in range(3):
             this_proposal[:, p] = proposal_nodes[p].data
-        # print('this_proposal[0]', this_proposal[0])
 
         actions_t = []
         actions_t.append(term_node)
@@ -365,9 +330,6 @@ def run_episode(
             actions_t += utterance_nodes
         if enable_proposal:
             actions_t += proposal_nodes
-        # if render:
-        # if render:
-            # print('batch_size', batch_size)
         if render and b_0_present:
             speaker = 'A' if agent == 0 else 'B'
             print('  %s t=%s' % (speaker, term_node.data[0][0]), end='')
@@ -385,7 +347,6 @@ def run_episode(
         if t == 0:
             # on first timestep theres no actual proposal yet, so score zero if terminate
             reward_eligible_mask.fill_(0)
-        # reward_eligible_idxes = reward_eligible_mask.nonzero().long().view(-1)
         if reward_eligible_mask.max() > 0:
             exceeded_pool, _ = ((last_proposal - pool) > 0).max(1)
             if exceeded_pool.max() > 0:
@@ -404,8 +365,6 @@ def run_episode(
                 rewards = [0, 0]
                 for i in range(2):
                     rewards[i] = utilities[b, i].cpu().dot(proposal[b, i].cpu())
-                # if render and b_0_present and b == 0:
-                #     print('rewards', rewards)
 
                 if prosocial:
                     total_actual_reward = np.sum(rewards)
@@ -423,16 +382,9 @@ def run_episode(
                             rewards[i] /= max_possible
 
                 alive_games[b]['rewards'] = rewards
-                # if render and b_0_present and b == 0:
-                #     print('  rewards', rewards)
 
-        # if render and b_0_present:
-        #     print('  term[0]', term_node.data.view(batch_size)[0])
-        # print('type(term_node.data)', type(term_node.data))
         still_alive_mask = 1 - term_node.data.view(batch_size).clone().byte()
-        # print('type(still_alive_mask)', type(still_alive_mask))
         finished_N = t >= N
-        # print('type(finished_N)', type(finished_N))
         if enable_cuda:
             finished_N = finished_N.cuda()
         still_alive_mask[finished_N] = 0
@@ -443,10 +395,7 @@ def run_episode(
             alive_games[b]['steps'] = t + 1
 
         if still_alive_mask.max() == 0:
-            # print('steps', [g['steps'] for g in games])
             break
-
-        # last_proposal = this_proposal
 
         # filter the state through the still alive mask:
         still_alive_idxes = still_alive_mask.nonzero().long().view(-1)
@@ -456,7 +405,6 @@ def run_episode(
         last_proposal = this_proposal[still_alive_idxes]
         utilities = utilities[still_alive_idxes]
         m_prev = m_prev[still_alive_idxes]
-        # p_prev = p_prev[still_alive_idxes]
         N = N[still_alive_idxes]
         if still_alive_mask[0] == 0:
             b_0_present = False
@@ -470,8 +418,6 @@ def run_episode(
         if 'steps' not in g:
             g['steps'] = 10
 
-    # if render:
-    #     print('  steps=%s' % games[0]['steps'])
     return actions_by_timestep, [g['rewards'] for g in games], [g['steps'] for g in games], alive_masks, entropy_loss_by_agent
 
 
@@ -555,8 +501,6 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
                     action.reinforce(alive_rewards[:, agent].contiguous().view(_batch_size, 1))
             nodes_by_agent[agent] += actions[t]
             mask = alive_masks[t]
-            # if enable_cuda:
-            #     mask = mask.cuda()
             if mask.max() == 0:
                 break
             alive_rewards = alive_rewards[mask.nonzero().long().view(-1)]
@@ -606,7 +550,6 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
             print('saved model')
             last_save = time.time()
 
-        # asdfd
         episode += 1
     f_log.close()
 
