@@ -270,4 +270,4 @@ Using .sum() instead of .mean() seems promising. using gpu version, ad2fad1:
 episode 4543 avg rewards 0.740 0.740 b=0.749 games/sec 791 avg steps 4.2285
 ```
 
-training graph so far: [images/cfb35e5.png]
+training graph so far: [images/cfb35e5-gpu.png] and [images/cfb35e5-cpu.png]
