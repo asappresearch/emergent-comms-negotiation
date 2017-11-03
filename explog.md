@@ -255,3 +255,17 @@ episode 296182 avg rewards 0.726 0.726 b=0.733 games/sec 2309 avg steps 0.0000
 ```
 
 => lets try increasing regularization a bit, eg set both to 1.0 for now... or ... use .sum() instead of .mean() ?
+
+Using .sum() instead of .mean() seems promising. using gpu version:
+```
+  N=7
+  pool=0,4,0
+  util[0] 9,7,10
+  util[1] 8,4,10
+  A t=0.0 u=000000 p=2,0,5
+  B t=0.0 u=000000 p=5,2,5
+  A t=0.0 u=000000 p=0,0,0
+  B t=1.0 u=000000 p=1,5,1
+  steps=4 reward=0.57
+episode 4543 avg rewards 0.740 0.740 b=0.749 games/sec 791 avg steps 4.2285
+```
