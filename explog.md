@@ -103,3 +103,46 @@ fixed some bugs in lstm, because [seq] and [batch] dimensions were reversed/squi
 
 Still gets into a local maximum though, where `A` proposes 0,0,0; and `B` accepts....
 => probably needs the entropy regularization, to push it to try other options for 'term'
+
+with term entropy regularization added and proposal entropy regularization added, 1f746b3, crashed:
+```
+episode 6091 avg rewards 0.74 0.74 b=0.73 games/sec 400 avg steps 2.00
+  N=5
+  pool=5,4,2
+  util[0] 7,7,6
+  util[1] 7,2,1
+  A t=0.0 u=071278 p=0,0,0
+  B t=1.0 u=981516 p=5,3,2
+  steps=2 reward=0.60
+episode 6102 avg rewards 0.73 0.73 b=0.72 games/sec 413 avg steps 2.00
+  N=10
+  pool=1,0,2
+  util[0] 6,0,10
+  util[1] 9,5,3
+Traceback (most recent call last):
+  File "ecn.py", line 574, in <module>
+    run(**args.__dict__)
+  File "ecn.py", line 472, in run
+    render=render)
+  File "ecn.py", line 305, in run_episode
+    prev_proposal=Variable(last_proposal)
+  File "/hugh/conda/lib/python3.6/site-packages/torch/nn/modules/module.py", line 224, in __call__
+    result = self.forward(*input, **kwargs)
+  File "ecn.py", line 246, in forward
+    proposal_node, _entropy = proposal_policy(h_t)
+  File "/hugh/conda/lib/python3.6/site-packages/torch/nn/modules/module.py", line 224, in __call__
+    result = self.forward(*input, **kwargs)
+  File "ecn.py", line 191, in forward
+    out_node = torch.multinomial(x)
+  File "/hugh/conda/lib/python3.6/site-packages/torch/autograd/variable.py", line 783, in multinomial
+    return Multinomial(num_samples, replacement)(self)
+  File "/hugh/conda/lib/python3.6/site-packages/torch/autograd/stochastic_function.py", line 23, in _do_forward
+    result = super(StochasticFunction, self)._do_forward(*inputs)
+  File "/hugh/conda/lib/python3.6/site-packages/torch/autograd/_functions/stochastic.py", line 16, in forward
+    samples = probs.multinomial(self.num_samples, self.with_replacement)
+RuntimeError: invalid argument 2: invalid multinomial distribution (sum of probabilities <= 0) at /opt/conda/conda-bld/pytorch_1503970438496/work/torch/lib/TH/generic/THTensorRandom.c:230
+```
+=> seems like the regularization pushed the weights to zero. I wonder how to solve that?
+
+Also, games per second is much lower with current entropy regularization. I imagine because back-propping twice each time. I wonder if there is a better way of implementing the entropy regularization?
+
