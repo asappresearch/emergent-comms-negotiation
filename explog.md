@@ -146,3 +146,21 @@ RuntimeError: invalid argument 2: invalid multinomial distribution (sum of proba
 
 Also, games per second is much lower with current entropy regularization. I imagine because back-propping twice each time. I wonder if there is a better way of implementing the entropy regularization?
 
+Fixed the entr reg speed issue somewhat, 653d3ad, from ~400 to ~570 games/sec, from the latest model save:
+```
+episode 6139 avg rewards 0.72 0.72 b=0.72 games/sec 565 avg steps 2.00
+  N=9
+  pool=1,0,2
+  util[0] 9,0,9
+  util[1] 5,5,7
+  A t=0.0 u=164342 p=0,0,0
+  B t=1.0 u=816912 p=0,4,2
+  steps=2 reward=0.70
+episode 6154 avg rewards 0.74 0.74 b=0.73 games/sec 577 avg steps 2.00
+  N=4
+  pool=2,5,3
+  util[0] 0,1,4
+  util[1] 6,2,6
+```
+
+invalid multinomial distr crashbug remains
