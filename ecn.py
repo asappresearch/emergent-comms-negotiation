@@ -114,11 +114,17 @@ class TermPolicy(nn.Module):
         super().__init__()
         self.h1 = nn.Linear(embedding_size, 1)
 
-    def forward(self, x):
+    def forward(self, x, eps=1e-20):
         x = self.h1(x)
         x = F.sigmoid(x)
         out_node = torch.bernoulli(x)
+        x = x + eps
         entropy = - (x * x.log()).sum(1).mean()
+        # if (entropy.data != entropy.data).max() > 0:
+        #     print('term policy entropy nan')
+        #     print('x', x)
+        #     print('x.log()', x.log())
+        #     asdfadsf
         return out_node, entropy
 
 
@@ -172,11 +178,17 @@ class ProposalPolicy(nn.Module):
         self.embedding_size = embedding_size
         self.h1 = nn.Linear(embedding_size, num_counts)
 
-    def forward(self, x):
-        x = self.h1(x)
-        x = F.softmax(x)
+    def forward(self, x, eps=1e-20):
+        x1 = self.h1(x)
+        x = F.softmax(x1)
         out_node = torch.multinomial(x)
+        x = x + eps
         entropy = (- x * x.log()).sum(1).mean()
+        # if (entropy.data != entropy.data).max() > 0:
+        #     print('prop policy entropy nan')
+        #     print('x', x)
+        #     print('x.log()', x.log())
+        #     asdfadsf
         return out_node, entropy
 
 
@@ -469,7 +481,23 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
         for i in range(2):
             if len(nodes_by_agent[i]) > 0:
                 autograd.backward([entropy_loss_by_agent[i]] + nodes_by_agent[i], [None] + len(nodes_by_agent[i]) * [None])
+                # for j in range(3):
+                #     prop_policy = list(agent_models[i].proposal_policies[j].h1.parameters())[0]
+                #     # if prop_policy.grad is not None:
+                #     proposal_params_grad = prop_policy.grad.data
+                #     if (proposal_params_grad != proposal_params_grad).max() > 0:
+                #         print('entropy_loss_by_agent[i]', entropy_loss_by_agent[i])
+                #         asdfd
+                #     # else:
+                #     #     print('prop_policy.grad none')
                 agent_opts[i].step()
+                # for j in range(3):
+                #     prop_policy = list(agent_models[i].proposal_policies[j].h1.parameters())[0]
+                #     # if prop_policy.grad is not None:
+                #     proposal_params = prop_policy.data
+                #     if (proposal_params != proposal_params).max() > 0:
+                #         print('entropy_loss_by_agent[i]', entropy_loss_by_agent[i])
+                #         asdfsdf
 
         rewards_sum += all_rewards.sum(0)
         steps_sum += np.sum(steps)
