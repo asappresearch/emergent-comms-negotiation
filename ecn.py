@@ -578,7 +578,7 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
                 rewards_sum[1] / count_sum,
                 baseline,
                 int(count_sum / time_since_last),
-                steps_sum / count_sum - 2.0
+                steps_sum / count_sum
             ))
             f_log.write(json.dumps({
                 'episode': episode,
