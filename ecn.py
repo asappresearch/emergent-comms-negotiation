@@ -44,14 +44,9 @@ class ContextNet(nn.Module):
             num_layers=1)
 
     def forward(self, x):
-        # print('')
-        # print('x.size()', x.size())
         batch_size = x.size()[0]
         x = x.transpose(0, 1)
         x = self.embedding(x)
-        # print('x.size()', x.size())
-        # x = x.view(6, batch_size, self.embedding_size)
-        # print('x.size()', x.size())
         state = (
             Variable(torch.zeros(1, batch_size, self.embedding_size)),
             Variable(torch.zeros(1, batch_size, self.embedding_size))
@@ -74,7 +69,6 @@ class UtteranceNet(nn.Module):
         batch_size = x.size()[0]
         x = x.transpose(0, 1)
         x = self.embedding(x)
-        # x = x.view(6, batch_size, self.embedding_size)
         state = (
             Variable(torch.zeros(1, 1, self.embedding_size)),
             Variable(torch.zeros(1, 1, self.embedding_size)))
@@ -95,12 +89,7 @@ class ProposalNet(nn.Module):
     def forward(self, x):
         batch_size = x.size()[0]
         x = x.transpose(0, 1)
-        # print('')
-        # print('x.size()', x.size())
         x = self.embedding(x)
-        # print('x.size()', x.size())
-        # x = x.view(3, batch_size, self.embedding_size)
-        # print('x.size()', x.size())
         state = (
             Variable(torch.zeros(1, batch_size, self.embedding_size)),
             Variable(torch.zeros(1, batch_size, self.embedding_size)))
@@ -128,10 +117,8 @@ class TermPolicy(nn.Module):
     def forward(self, x):
         x = self.h1(x)
         x = F.sigmoid(x)
-        # print('x[0]', x[0])
         out_node = torch.bernoulli(x)
         entropy = - (x * x.log()).sum(1).mean()
-        # entropy = entropy.mean()
         return out_node, entropy
 
 
@@ -222,15 +209,11 @@ class AgentModel(nn.Module):
             self.__setattr__('policy%s' % i, proposal_policy)
 
     def forward(self, context, m_prev, prev_proposal):
-        # batch_size = context.size()[0]
-        # print('batch_size', batch_size)
         c_h = self.context_net(context)
         m_h = self.utterance_net(m_prev)
         p_h = self.proposal_net(prev_proposal)
 
         h_t = torch.cat([c_h, m_h, p_h], -1)
-        # h_t = torch.cat([c_h, c_h, p_h], -1)
-        # h_t = Variable(torch.zeros(batch_size, self.embedding_size * 3))
         h_t = self.combined_net(h_t)
 
         entropy_loss = 0
@@ -247,19 +230,6 @@ class AgentModel(nn.Module):
                 proposal_nodes.append(proposal_node)
                 entropy_loss -= self.proposal_entropy_reg * _entropy
         return term_node, utterance_token_nodes, proposal_nodes, entropy_loss
-
-
-# class Agent(object):
-#     """
-#     holds model, optimizer, etc
-#     """
-#     def __init__(self, enable_comms, enable_proposal):
-#         self.enable_comms = enable_comms
-#         self.enable_proposal = enable_proposal
-#         self.model = AgentModel(
-#             enable_comms=enable_comms,
-#             enable_proposal=enable_proposal)
-#         self.opt = optim.Adam(params=self.model.parameters())
 
 
 def run_episode(
@@ -483,17 +453,11 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
             alive_rewards[:, i] = torch.FloatTensor([r[i] for r in rewards])
         alive_rewards -= baseline
         T = len(actions)
-        # print('len(rewards)', len(rewards))
-        # print('len(actions)', len(actions))
-        # print('len(alive_masks)',len(alive_masks))
-        # entropy_sum.neg().backward(retain_graph=True)
         for t in range(T):
-            # print('len(alive_rewards)', len(alive_rewards))
             _batch_size = alive_rewards.size()[0]
             agent = 0 if t % 2 == 0 else 1
             if len(actions[t]) > 0:
                 for action in actions[t]:
-                    # print('action.size()', action.size())
                     action.reinforce(alive_rewards[:, agent].contiguous().view(_batch_size, 1))
             nodes_by_agent[agent] += actions[t]
             mask = alive_masks[t]
