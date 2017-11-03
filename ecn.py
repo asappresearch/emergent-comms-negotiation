@@ -38,21 +38,28 @@ class ContextNet(nn.Module):
         super().__init__()
         self.embedding_size = embedding_size
         self.embedding = nn.Embedding(11, embedding_size)
-        self.lstm = nn.LSTM(
+        self.lstm = nn.LSTMCell(
             input_size=embedding_size,
-            hidden_size=embedding_size,
-            num_layers=1)
+            hidden_size=embedding_size)
 
     def forward(self, x):
+        # print('x.size()', x.size())
         batch_size = x.size()[0]
+        seq_len = x.size()[1]
         x = x.transpose(0, 1)
         x = self.embedding(x)
+        # print('x.size()', x.size())
         state = (
-            Variable(torch.zeros(1, batch_size, self.embedding_size)),
-            Variable(torch.zeros(1, batch_size, self.embedding_size))
+            Variable(torch.zeros(batch_size, self.embedding_size)),
+            Variable(torch.zeros(batch_size, self.embedding_size))
         )
-        x, state = self.lstm(x, state)
-        return state[0].view(batch_size, self.embedding_size)
+        for s in range(seq_len):
+            # print('len(state)', len(state))
+            # print('state[0].size()', state[0].size())
+            # print('s', s, 'x.size()', x.size())
+            state = self.lstm(x[s], state)
+        # return state[0].view(batch_size, self.embedding_size)
+        return state[0]
 
 
 class UtteranceNet(nn.Module):
@@ -60,20 +67,23 @@ class UtteranceNet(nn.Module):
         super().__init__()
         self.embedding_size = embedding_size
         self.embedding = nn.Embedding(11, embedding_size)
-        self.lstm = nn.LSTM(
+        self.lstm = nn.LSTMCell(
             input_size=embedding_size,
-            hidden_size=embedding_size,
-            num_layers=1)
+            hidden_size=embedding_size)
 
     def forward(self, x):
         batch_size = x.size()[0]
+        seq_len = x.size()[1]
         x = x.transpose(0, 1)
         x = self.embedding(x)
         state = (
-            Variable(torch.zeros(1, 1, self.embedding_size)),
-            Variable(torch.zeros(1, 1, self.embedding_size)))
-        x, state = self.lstm(x, state)
-        return state[0].view(batch_size, self.embedding_size)
+            Variable(torch.zeros(batch_size, self.embedding_size)),
+            Variable(torch.zeros(batch_size, self.embedding_size)))
+        # x, state = self.lstm(x, state)
+        for s in range(seq_len):
+            state = self.lstm(x[s], state)
+        # return state[0].view(batch_size, self.embedding_size)
+        return state[0]
 
 
 class ProposalNet(nn.Module):
@@ -81,20 +91,23 @@ class ProposalNet(nn.Module):
         super().__init__()
         self.embedding_size = embedding_size
         self.embedding = nn.Embedding(11, embedding_size)
-        self.lstm = nn.LSTM(
+        self.lstm = nn.LSTMCell(
             input_size=embedding_size,
-            hidden_size=embedding_size,
-            num_layers=1)
+            hidden_size=embedding_size)
 
     def forward(self, x):
         batch_size = x.size()[0]
+        seq_len = x.size()[1]
         x = x.transpose(0, 1)
         x = self.embedding(x)
         state = (
-            Variable(torch.zeros(1, batch_size, self.embedding_size)),
-            Variable(torch.zeros(1, batch_size, self.embedding_size)))
-        x, state = self.lstm(x, state)
-        return state[0].view(batch_size, self.embedding_size)
+            Variable(torch.zeros(batch_size, self.embedding_size)),
+            Variable(torch.zeros(batch_size, self.embedding_size)))
+        # x, state = self.lstm(x, state)
+        for s in range(seq_len):
+            state = self.lstm(x[s], state)
+        # return state[0].view(batch_size, self.embedding_size)
+        return state[0]
 
 
 class CombinedNet(nn.Module):
