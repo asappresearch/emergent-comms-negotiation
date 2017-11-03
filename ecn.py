@@ -41,6 +41,11 @@ class ContextNet(nn.Module):
         self.lstm = nn.LSTMCell(
             input_size=embedding_size,
             hidden_size=embedding_size)
+        self.zero_state = None
+        # self.zero_state = (
+        #     Variable(torch.zeros(128, self.embedding_size)),
+        #     Variable(torch.zeros(128, self.embedding_size))
+        # )
 
     def forward(self, x):
         # print('x.size()', x.size())
@@ -49,15 +54,31 @@ class ContextNet(nn.Module):
         x = x.transpose(0, 1)
         x = self.embedding(x)
         # print('x.size()', x.size())
-        state = (
-            Variable(torch.zeros(batch_size, self.embedding_size)),
-            Variable(torch.zeros(batch_size, self.embedding_size))
-        )
+        # state = (
+        #     Variable(torch.zeros(batch_size, self.embedding_size)),
+        #     Variable(torch.zeros(batch_size, self.embedding_size))
+        # )
+        # if x.is_cuda:
+        #     states = (state[0].cuda(), state[1].cuda)
+        if x.is_cuda:
+            state = (
+                    Variable(torch.cuda.FloatTensor(batch_size, self.embedding_size).fill_(0)),
+                    Variable(torch.cuda.FloatTensor(batch_size, self.embedding_size).fill_(0))
+                )
+        else:
+            state = (
+                    Variable(torch.zeros(batch_size, self.embedding_size)),
+                    Variable(torch.zeros(batch_size, self.embedding_size))
+                )
+
         for s in range(seq_len):
             # print('len(state)', len(state))
             # print('state[0].size()', state[0].size())
             # print('s', s, 'x.size()', x.size())
             state = self.lstm(x[s], state)
+        # print('state[0]', state[0])
+        # print('self.zero_state[0]', self.zero_state[0])
+        # asdf
         # return state[0].view(batch_size, self.embedding_size)
         return state[0]
 
@@ -76,9 +97,16 @@ class UtteranceNet(nn.Module):
         seq_len = x.size()[1]
         x = x.transpose(0, 1)
         x = self.embedding(x)
-        state = (
-            Variable(torch.zeros(batch_size, self.embedding_size)),
-            Variable(torch.zeros(batch_size, self.embedding_size)))
+        if x.is_cuda:
+            state = (
+                    Variable(torch.cuda.FloatTensor(batch_size, self.embedding_size).fill_(0)),
+                    Variable(torch.cuda.FloatTensor(batch_size, self.embedding_size).fill_(0))
+                )
+        else:
+            state = (
+                    Variable(torch.zeros(batch_size, self.embedding_size)),
+                    Variable(torch.zeros(batch_size, self.embedding_size))
+                )
         # x, state = self.lstm(x, state)
         for s in range(seq_len):
             state = self.lstm(x[s], state)
@@ -100,9 +128,16 @@ class ProposalNet(nn.Module):
         seq_len = x.size()[1]
         x = x.transpose(0, 1)
         x = self.embedding(x)
-        state = (
-            Variable(torch.zeros(batch_size, self.embedding_size)),
-            Variable(torch.zeros(batch_size, self.embedding_size)))
+        if x.is_cuda:
+            state = (
+                    Variable(torch.cuda.FloatTensor(batch_size, self.embedding_size).fill_(0)),
+                    Variable(torch.cuda.FloatTensor(batch_size, self.embedding_size).fill_(0))
+                )
+        else:
+            state = (
+                    Variable(torch.zeros(batch_size, self.embedding_size)),
+                    Variable(torch.zeros(batch_size, self.embedding_size))
+                )
         # x, state = self.lstm(x, state)
         for s in range(seq_len):
             state = self.lstm(x[s], state)
@@ -230,7 +265,10 @@ class AgentModel(nn.Module):
         if self.enable_comms:
             m_h = self.utterance_net(m_prev)
         else:
-            m_h = Variable(torch.zeros(batch_size, self.embedding_size))
+            if context.is_cuda:
+                m_h = Variable(torch.cuda.FloatTensor(batch_size, self.embedding_size).fill_(0))
+            else:
+                m_h = Variable(torch.zeros(batch_size, self.embedding_size))
         p_h = self.proposal_net(prev_proposal)
 
         h_t = torch.cat([c_h, m_h, p_h], -1)
@@ -253,6 +291,7 @@ class AgentModel(nn.Module):
 
 
 def run_episode(
+        enable_cuda,
         enable_comms,
         enable_proposal,
         prosocial,
@@ -267,6 +306,13 @@ def run_episode(
     utilities[:, 1] = sample_utility(batch_size)
     last_proposal = torch.zeros(batch_size, 3).long()
     m_prev = torch.zeros(batch_size, 6).long()
+
+    if enable_cuda:
+        N = N.cuda()
+        pool = pool.cuda()
+        utilities = utilities.cuda()
+        last_proposal = last_proposal.cuda()
+        m_prev = m_prev.cuda()
 
     games = []
     actions_by_timestep = []
@@ -284,6 +330,9 @@ def run_episode(
         # print('')
     b_0_present = True
     entropy_loss_by_agent = [Variable(torch.zeros(1)), Variable(torch.zeros(1))]
+    if enable_cuda:
+        entropy_loss_by_agent[0] = entropy_loss_by_agent[0].cuda()
+        entropy_loss_by_agent[1] = entropy_loss_by_agent[1].cuda()
     for t in range(10):
         agent = 0 if t % 2 == 0 else 1
         batch_size = len(alive_games)
@@ -304,6 +353,8 @@ def run_episode(
                 m_prev[:, i] = utterance_nodes[i].data
 
         this_proposal = torch.zeros(batch_size, 3).long()
+        if enable_cuda:
+            this_proposal = this_proposal.cuda()
         for p in range(3):
             this_proposal[:, p] = proposal_nodes[p].data
         # print('this_proposal[0]', this_proposal[0])
@@ -352,13 +403,13 @@ def run_episode(
             for b in reward_eligible_idxes:
                 rewards = [0, 0]
                 for i in range(2):
-                    rewards[i] = utilities[b, i].dot(proposal[b, i])
+                    rewards[i] = utilities[b, i].cpu().dot(proposal[b, i].cpu())
                 # if render and b_0_present and b == 0:
                 #     print('rewards', rewards)
 
                 if prosocial:
                     total_actual_reward = np.sum(rewards)
-                    total_possible_reward = max_utility[b].dot(pool[b])
+                    total_possible_reward = max_utility[b].cpu().dot(pool[b].cpu())
                     scaled_reward = 0
                     if total_possible_reward != 0:
                         scaled_reward = total_actual_reward / total_possible_reward
@@ -367,7 +418,7 @@ def run_episode(
                         print('  steps=%s reward=%.2f' % (t + 1, scaled_reward))
                 else:
                     for i in range(2):
-                        max_possible = utilities[b, i].dot(pool)
+                        max_possible = utilities[b, i].cpu().dot(pool.cpu())
                         if max_possible != 0:
                             rewards[i] /= max_possible
 
@@ -377,8 +428,13 @@ def run_episode(
 
         # if render and b_0_present:
         #     print('  term[0]', term_node.data.view(batch_size)[0])
+        # print('type(term_node.data)', type(term_node.data))
         still_alive_mask = 1 - term_node.data.view(batch_size).clone().byte()
+        # print('type(still_alive_mask)', type(still_alive_mask))
         finished_N = t >= N
+        # print('type(finished_N)', type(finished_N))
+        if enable_cuda:
+            finished_N = finished_N.cuda()
         still_alive_mask[finished_N] = 0
         alive_masks.append(still_alive_mask)
 
@@ -394,6 +450,8 @@ def run_episode(
 
         # filter the state through the still alive mask:
         still_alive_idxes = still_alive_mask.nonzero().long().view(-1)
+        if enable_cuda:
+            still_alive_idxes = still_alive_idxes.cuda()
         pool = pool[still_alive_idxes]
         last_proposal = this_proposal[still_alive_idxes]
         utilities = utilities[still_alive_idxes]
@@ -418,7 +476,7 @@ def run_episode(
 
 
 def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, batch_size,
-        term_entropy_reg, proposal_entropy_reg):
+        term_entropy_reg, proposal_entropy_reg, enable_cuda):
     if seed is not None:
         np.random.seed(seed)
         torch.manual_seed(seed)
@@ -427,12 +485,15 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
     agent_models = []
     agent_opts = []
     for i in range(2):
-        agent_models.append(AgentModel(
+        model = AgentModel(
             enable_comms=enable_comms,
             enable_proposal=enable_proposal,
             term_entropy_reg=term_entropy_reg,
             proposal_entropy_reg=proposal_entropy_reg
-        ))
+        )
+        if enable_cuda:
+            model = model.cuda()
+        agent_models.append(model)
         agent_opts.append(optim.Adam(params=agent_models[i].parameters()))
     if path.isfile(model_file):
         with open(model_file, 'rb') as f:
@@ -464,6 +525,7 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
         render = time.time() - last_print >= 3.0
         # render = True
         actions, rewards, steps, alive_masks, entropy_loss_by_agent = run_episode(
+            enable_cuda=enable_cuda,
             enable_comms=enable_comms,
             enable_proposal=enable_proposal,
             agent_models=agent_models,
@@ -480,6 +542,9 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
             # note to self: just use .clone() or something...
             all_rewards[:, i] = torch.FloatTensor([r[i] for r in rewards])
             alive_rewards[:, i] = torch.FloatTensor([r[i] for r in rewards])
+        if enable_cuda:
+            all_rewards = all_rewards.cuda()
+            alive_rewards = alive_rewards.cuda()
         alive_rewards -= baseline
         T = len(actions)
         for t in range(T):
@@ -500,7 +565,7 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
                 autograd.backward([entropy_loss_by_agent[i]] + nodes_by_agent[i], [None] + len(nodes_by_agent[i]) * [None])
                 agent_opts[i].step()
 
-        rewards_sum += all_rewards.sum(0)
+        rewards_sum += all_rewards.sum(0).cpu()
         steps_sum += np.sum(steps)
         baseline = 0.7 * baseline + 0.3 * all_rewards.mean()
         count_sum += batch_size
@@ -556,6 +621,7 @@ if __name__ == '__main__':
     parser.add_argument('--disable-proposal', action='store_true')
     parser.add_argument('--disable-comms', action='store_true')
     parser.add_argument('--disable-prosocial', action='store_true')
+    parser.add_argument('--enable-cuda', action='store_true')
     parser.add_argument('--logfile', type=str, default='logs/log_%Y%m%d_%H%M%S.log')
     args = parser.parse_args()
     args.enable_comms = not args.disable_comms
