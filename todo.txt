@@ -1,4 +1,4 @@
-- add entropy regularization
+- add entropy regularization for utterances
 - (cudaify)
 
 done:
@@ -18,3 +18,4 @@ done:
 - add utterance back into net
 - print example utterances/conversations
 - add in game length to logs somehow
+- add entropy regularization

@@ -164,3 +164,9 @@ episode 6154 avg rewards 0.74 0.74 b=0.73 games/sec 577 avg steps 2.00
 ```
 
 invalid multinomial distr crashbug remains
+
+fixed multinomial crashbug in 4d628ee65
+
+turn to looking at the local minimum where first agent proposes all zeros, and second agent immediately accepts.
+
+let's remove comms, to speed up training. trying 4599249 wiht `--disable-comms`, which runs at ~1000 games/second, using cpu.
