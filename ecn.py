@@ -144,7 +144,7 @@ class TermPolicy(nn.Module):
         x = F.sigmoid(x)
         out_node = torch.bernoulli(x)
         x = x + eps
-        entropy = - (x * x.log()).sum(1).mean()
+        entropy = - (x * x.log()).sum(1).sum()
         return out_node, entropy
 
 
@@ -198,7 +198,7 @@ class ProposalPolicy(nn.Module):
         x = F.softmax(x1)
         out_node = torch.multinomial(x)
         x = x + eps
-        entropy = (- x * x.log()).sum(1).mean()
+        entropy = (- x * x.log()).sum(1).sum()
         return out_node, entropy
 
 

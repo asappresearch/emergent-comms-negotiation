@@ -230,3 +230,28 @@ episode 126924 avg rewards 0.734 0.734 b=0.740 games/sec 1234 avg steps 2.0000
 ```
 
 Not sure how to fix this. Increase entropy regularization term?
+
+after a few more episodes, still stuck, cpu version:
+```
+  N=7
+  pool=4,3,0
+  util[0] 8,1,4
+  util[1] 5,9,3
+  A t=0.0 u=000000 p=0,0,0
+  B t=1.0 u=000000 p=4,4,4
+  steps=2 reward=0.80
+episode 197938 avg rewards 0.721 0.721 b=0.717 games/sec 1271 avg steps 2.0000
+```
+gpu version:
+```
+  N=9
+  pool=4,5,0
+  util[0] 5,3,9
+  util[1] 0,10,6
+  A t=0.0 u=000000 p=0,0,0
+  B t=1.0 u=000000 p=3,4,1
+  steps=2 reward=0.71
+episode 296182 avg rewards 0.726 0.726 b=0.733 games/sec 2309 avg steps 0.0000
+```
+
+=> lets try increasing regularization a bit, eg set both to 1.0 for now... or ... use .sum() instead of .mean() ?
