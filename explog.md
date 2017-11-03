@@ -256,7 +256,7 @@ episode 296182 avg rewards 0.726 0.726 b=0.733 games/sec 2309 avg steps 0.0000
 
 => lets try increasing regularization a bit, eg set both to 1.0 for now... or ... use .sum() instead of .mean() ?
 
-Using .sum() instead of .mean() seems promising. using gpu version:
+Using .sum() instead of .mean() seems promising. using gpu version, ad2fad1:
 ```
   N=7
   pool=0,4,0
