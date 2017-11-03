@@ -233,9 +233,9 @@ class AgentModel(nn.Module):
         # h_t = Variable(torch.zeros(batch_size, self.embedding_size * 3))
         h_t = self.combined_net(h_t)
 
-        entropy_sum = 0
+        entropy_loss = 0
         term_node, entropy = self.term_policy(h_t)
-        entropy_sum += entropy * self.term_entropy_reg
+        entropy_loss -= entropy * self.term_entropy_reg
         utterance_token_nodes = []
         if self.enable_comms:
             utterance_token_nodes = self.utterance_policy(h_t)
@@ -245,8 +245,8 @@ class AgentModel(nn.Module):
             for proposal_policy in self.proposal_policies:
                 proposal_node, _entropy = proposal_policy(h_t)
                 proposal_nodes.append(proposal_node)
-                entropy_sum += self.proposal_entropy_reg * _entropy
-        return term_node, utterance_token_nodes, proposal_nodes, entropy_sum
+                entropy_loss -= self.proposal_entropy_reg * _entropy
+        return term_node, utterance_token_nodes, proposal_nodes, entropy_loss
 
 
 # class Agent(object):
@@ -291,7 +291,7 @@ def run_episode(
             print('  util[%s] %s,%s,%s' % (i, utilities[0][i][0], utilities[0][i][1], utilities[0][i][2]))
         # print('')
     b_0_present = True
-    entropy_sum = 0
+    entropy_loss_by_agent = [Variable(torch.zeros(1)), Variable(torch.zeros(1))]
     for t in range(10):
         agent = 0 if t % 2 == 0 else 1
         batch_size = len(alive_games)
@@ -299,12 +299,13 @@ def run_episode(
 
         c = torch.cat([pool, utility], 1)
         agent_model = agent_models[agent]
-        term_node, utterance_nodes, proposal_nodes, _entropy_sum = agent_model(
+        term_node, utterance_nodes, proposal_nodes, _entropy_loss = agent_model(
             context=Variable(c),
             m_prev=Variable(m_prev),
             prev_proposal=Variable(last_proposal)
         )
-        entropy_sum += _entropy_sum
+        entropy_loss_by_agent[agent] += _entropy_loss
+        # entropy_sum += _entropy_sum
         for i in range(6):
             # print('i', i, 'utterance_nodes[i].data[0][0]', utterance_nodes[i].data[0][0])
             m_prev[:, i] = utterance_nodes[i].data
@@ -416,7 +417,7 @@ def run_episode(
 
     # if render:
     #     print('  steps=%s' % games[0]['steps'])
-    return actions_by_timestep, [g['rewards'] for g in games], [g['steps'] for g in games], alive_masks, entropy_sum
+    return actions_by_timestep, [g['rewards'] for g in games], [g['steps'] for g in games], alive_masks, entropy_loss_by_agent
 
 
 def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, batch_size,
@@ -465,7 +466,7 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
     while True:
         render = time.time() - last_print >= 3.0
         # render = True
-        actions, rewards, steps, alive_masks, entropy_sum = run_episode(
+        actions, rewards, steps, alive_masks, entropy_loss_by_agent = run_episode(
             agent_models=agent_models,
             prosocial=prosocial,
             batch_size=batch_size,
@@ -485,7 +486,7 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
         # print('len(rewards)', len(rewards))
         # print('len(actions)', len(actions))
         # print('len(alive_masks)',len(alive_masks))
-        entropy_sum.neg().backward(retain_graph=True)
+        # entropy_sum.neg().backward(retain_graph=True)
         for t in range(T):
             # print('len(alive_rewards)', len(alive_rewards))
             _batch_size = alive_rewards.size()[0]
@@ -503,7 +504,7 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
             alive_rewards = alive_rewards[mask.nonzero().long().view(-1)]
         for i in range(2):
             if len(nodes_by_agent[i]) > 0:
-                autograd.backward(nodes_by_agent[i], len(nodes_by_agent[i]) * [None])
+                autograd.backward([entropy_loss_by_agent[i]] + nodes_by_agent[i], [None] + len(nodes_by_agent[i]) * [None])
                 agent_opts[i].step()
 
         rewards_sum += all_rewards.sum(0)
