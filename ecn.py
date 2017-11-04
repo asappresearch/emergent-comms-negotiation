@@ -14,6 +14,27 @@ import nets
 import sampling
 
 
+def render_action(t, N, agent, utility, proposal_nodes, pool, m_prev, term_node):
+    speaker = 'A' if agent == 0 else 'B'
+    # print('  %s' % speaker, end='')
+    # print('  ')
+    print('  ', end='')
+    if speaker == 'B':
+        print('                                   ', end='')
+    if term_node.data[0][0]:
+        print(' ACC' )
+    else:
+        print(' ' + ''.join([str(s) for s in m_prev[0].view(-1).tolist()]), end='')
+        print(' %s:%s/%s %s:%s/%s %s:%s/%s' % (
+            utility[0][0], proposal_nodes[0].data[0][0], pool[0][0],
+            utility[0][1], proposal_nodes[1].data[0][0], pool[0][1],
+            utility[0][2], proposal_nodes[2].data[0][0], pool[0][2],
+        ), end='')
+        print('')
+        if t + 1 == N[0]:
+            print('  [out of time]')
+
+
 def run_episode(
         enable_cuda,
         enable_comms,
@@ -22,7 +43,6 @@ def run_episode(
         agent_models,
         batch_size,
         render=False):
-    # following take not much memory, not fluffed up yet:
     N = sampling.sample_N(batch_size).int()
     pool = sampling.sample_items(batch_size)
     utilities = torch.zeros(batch_size, 2, 3).long()
@@ -45,12 +65,7 @@ def run_episode(
         games.append({'rewards': [0, 0]})
     alive_games = games.copy()
 
-    # if render:
-    #     # print('  N=%s' % N[0])
-    #     # print('  pool=%s,%s,%s' % (pool[0][0], pool[0][1], pool[0][2]))
-    #     for i in range(2):
-    #         print('  util[%s] %s,%s,%s' % (i, utilities[0][i][0], utilities[0][i][1], utilities[0][i][2]))
-    b_0_present = True
+    b_0_present = True  # is the first row of batch present? strictly for rendering purposes
     entropy_loss_by_agent = [Variable(torch.zeros(1)), Variable(torch.zeros(1))]
     if enable_cuda:
         entropy_loss_by_agent[0] = entropy_loss_by_agent[0].cuda()
@@ -86,26 +101,18 @@ def run_episode(
             actions_t += utterance_nodes
         if enable_proposal:
             actions_t += proposal_nodes
-        if render and b_0_present:
-            speaker = 'A' if agent == 0 else 'B'
-            # print('  %s' % speaker, end='')
-            # print('  ')
-            print('  ', end='')
-            if speaker == 'B':
-                print('                                   ', end='')
-            if term_node.data[0][0]:
-                print(' ACC' )
-            else:
-                print(' ' + ''.join([str(s) for s in m_prev[0].view(-1).tolist()]), end='')
-                print(' %s:%s/%s %s:%s/%s %s:%s/%s' % (
-                    utility[0][0], proposal_nodes[0].data[0][0], pool[0][0],
-                    utility[0][1], proposal_nodes[1].data[0][0], pool[0][1],
-                    utility[0][2], proposal_nodes[2].data[0][0], pool[0][2],
-                ), end='')
-                print('')
-                if t + 1 == N[0]:
-                    print('  [out of time]')
         actions_by_timestep.append(actions_t)
+
+        if render and b_0_present:
+            render_action(
+                agent=agent,
+                pool=pool,
+                utility=utility,
+                m_prev=m_prev,
+                term_node=term_node,
+                proposal_nodes=proposal_nodes,
+                t=t,
+                N=N)
 
         # calcualate rewards for any that just finished
         reward_eligible_mask = term_node.data.view(batch_size).clone().byte()
