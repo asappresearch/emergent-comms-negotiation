@@ -275,3 +275,12 @@ training graph so far: [images/cfb35e5-gpu.png] and [images/cfb35e5-cpu.png]
 commandlines:
 - cpu: `python ecn.py --model-file model_saves/nocomms_sument.dat --disable-comms`
 - gpu: `python ecn.py --model-file model_saves/cuda_nocomms_sument.dat --enable-cuda --disable-comms`
+
+speed at this point, after convergence, ie avg steps/game ~4.2:
+- c4.8xlarge: ~520 games/sec
+- g3.4xlarge: ~880 games/sec
+- v100: ~1380 games/sec (using cuda9 branch, https://github.com/ASAPPinc/emergent_comms_negotiation/tree/cuda9 , not very tested...)
+
+Looks like it's plateau'd. Possible next approaches:
+- add utterances?
+- re-check the paper, and compare with their no-comms results?
