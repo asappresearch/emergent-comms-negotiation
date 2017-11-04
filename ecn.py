@@ -163,17 +163,16 @@ def run_episode(
     for t in range(10):
         agent = 0 if t % 2 == 0 else 1
         batch_size = len(alive_games)
-        utility = s.utilities[:, agent]
 
-        c = torch.cat([s.pool, utility], 1)
         agent_model = agent_models[agent]
-        term_node, term_a, utterance_nodes, s.m_prev, proposal_nodes, this_proposal, _entropy_loss = agent_model(
-            context=Variable(c),
+        nodes, term_a, s.m_prev, this_proposal, _entropy_loss = agent_model(
+            pool=Variable(s.pool),
+            utility=Variable(s.utilities[:, agent]),
             m_prev=Variable(s.m_prev),
             prev_proposal=Variable(s.last_proposal)
         )
         entropy_loss_by_agent[agent] += _entropy_loss
-        actions_by_timestep.append([term_node] + utterance_nodes + proposal_nodes)
+        actions_by_timestep.append(nodes)
 
         if render and b_0_present:
             render_action(
@@ -193,7 +192,7 @@ def run_episode(
             term=term_a
         )
 
-        still_alive_mask = 1 - term_node.data.view(batch_size).clone().byte()
+        still_alive_mask = 1 - term_a.view(batch_size).clone().byte()
         finished_N = t + 1 >= s.N
         if enable_cuda:
             finished_N = finished_N.cuda()

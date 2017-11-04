@@ -153,8 +153,9 @@ class AgentModel(nn.Module):
         self.utterance_policy = UtterancePolicy()
         self.proposal_policy = ProposalPolicy()
 
-    def forward(self, context, m_prev, prev_proposal):
-        batch_size = context.size()[0]
+    def forward(self, pool, utility, m_prev, prev_proposal):
+        batch_size = pool.size()[0]
+        context = torch.cat([pool, utility], 1)
         c_h = self.context_net(context)
         type_constr = torch.cuda if context.is_cuda else torch
         if self.enable_comms:
@@ -167,19 +168,22 @@ class AgentModel(nn.Module):
         h_t = self.combined_net(h_t)
 
         entropy_loss = 0
+        nodes = []
 
         term_node, term_a, entropy = self.term_policy(h_t)
+        nodes.append(term_node)
         entropy_loss -= entropy * self.term_entropy_reg
 
-        utterance_nodes = []
         utterance = None
         if self.enable_comms:
             utterance_nodes, utterance, utterance_entropy = self.utterance_policy(h_t)
+            notes += utterance_nodes
             # entropy_loss -= self.itterance_entropy_reg * utterance_entropy
         else:
             utterance = type_constr.LongTensor(batch_size, 6).zero_()  # hard-coding 6 here is a bit hacky...
 
         proposal_nodes, proposal, proposal_entropy = self.proposal_policy(h_t)
+        nodes += proposal_nodes
         entropy_loss -= self.proposal_entropy_reg * proposal_entropy
 
-        return term_node, term_a, utterance_nodes, utterance, proposal_nodes, proposal, entropy_loss
+        return nodes, term_a, utterance, proposal, entropy_loss
