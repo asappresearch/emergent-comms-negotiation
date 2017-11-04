@@ -63,16 +63,18 @@ def run_episode(
         games.append({'rewards': [0, 0]})
     alive_games = games.copy()
 
-    if render:
-        print('  N=%s' % N[0])
-        print('  pool=%s,%s,%s' % (pool[0][0], pool[0][1], pool[0][2]))
-        for i in range(2):
-            print('  util[%s] %s,%s,%s' % (i, utilities[0][i][0], utilities[0][i][1], utilities[0][i][2]))
+    # if render:
+    #     # print('  N=%s' % N[0])
+    #     # print('  pool=%s,%s,%s' % (pool[0][0], pool[0][1], pool[0][2]))
+    #     for i in range(2):
+    #         print('  util[%s] %s,%s,%s' % (i, utilities[0][i][0], utilities[0][i][1], utilities[0][i][2]))
     b_0_present = True
     entropy_loss_by_agent = [Variable(torch.zeros(1)), Variable(torch.zeros(1))]
     if enable_cuda:
         entropy_loss_by_agent[0] = entropy_loss_by_agent[0].cuda()
         entropy_loss_by_agent[1] = entropy_loss_by_agent[1].cuda()
+    if render:
+        print('  ')
     for t in range(10):
         agent = 0 if t % 2 == 0 else 1
         batch_size = len(alive_games)
@@ -104,14 +106,23 @@ def run_episode(
             actions_t += proposal_nodes
         if render and b_0_present:
             speaker = 'A' if agent == 0 else 'B'
-            print('  %s t=%s' % (speaker, term_node.data[0][0]), end='')
-            print(' u=' + ''.join([str(s) for s in m_prev[0].view(-1).tolist()]), end='')
-            print(' p=%s,%s,%s' % (
-                proposal_nodes[0].data[0][0],
-                proposal_nodes[1].data[0][0],
-                proposal_nodes[2].data[0][0]
-            ), end='')
-            print('')
+            # print('  %s' % speaker, end='')
+            # print('  ')
+            print('  ', end='')
+            if speaker == 'B':
+                print('                                   ', end='')
+            if term_node.data[0][0]:
+                print(' ACC' )
+            else:
+                print(' ' + ''.join([str(s) for s in m_prev[0].view(-1).tolist()]), end='')
+                print(' %s/%s * %s, %s/%s * %s, %s/%s * %s' % (
+                    proposal_nodes[0].data[0][0], pool[0][0], utility[0][0],
+                    proposal_nodes[1].data[0][0], pool[0][1], utility[0][1],
+                    proposal_nodes[2].data[0][0], pool[0][2], utility[0][2]
+                ), end='')
+                print('')
+                if t + 1 == N[0]:
+                    print('  [out of time]')
         actions_by_timestep.append(actions_t)
 
         # calcualate rewards for any that just finished
@@ -145,8 +156,6 @@ def run_episode(
                     if total_possible_reward != 0:
                         scaled_reward = total_actual_reward / total_possible_reward
                     rewards = [scaled_reward, scaled_reward]
-                    if render and b_0_present and b == 0:
-                        print('  steps=%s reward=%.2f' % (t + 1, scaled_reward))
                 else:
                     for i in range(2):
                         max_possible = utilities[b, i].cpu().dot(pool.cpu())
@@ -189,6 +198,9 @@ def run_episode(
     for g in games:
         if 'steps' not in g:
             g['steps'] = 10
+
+    if render:
+        print('  r: %.2f' % np.mean(g['rewards']))
 
     return actions_by_timestep, [g['rewards'] for g in games], [g['steps'] for g in games], alive_masks, entropy_loss_by_agent
 
