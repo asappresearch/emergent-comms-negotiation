@@ -4,6 +4,7 @@ Given a logfile, plot a graph
 import matplotlib.pyplot as plt
 import json
 import argparse
+import numpy as np
 
 
 def plot_reward(logfile, min_y, max_y, title, max_x):
@@ -35,10 +36,10 @@ def plot_reward(logfile, min_y, max_y, title, max_x):
         min_y = 0
     if max_y is not None:
         plt.ylim([min_y, max_y])
-    plt.plot(epoch, reward, label='reward')
+    plt.plot(np.array(epoch) / 1000, reward, label='reward')
     if title is not None:
         plt.title(title)
-    plt.xlabel('Episodes of 128 games')
+    plt.xlabel('Episodes of 128 games (thousands)')
     plt.ylabel('Reward')
     plt.legend()
     plt.savefig('/tmp/out-reward.png')
