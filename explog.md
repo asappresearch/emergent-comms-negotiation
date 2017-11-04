@@ -284,3 +284,7 @@ speed at this point, after convergence, ie avg steps/game ~4.2:
 Looking at the reward curves, looks like they're plateau'ing. Possible next approaches:
 - add utterances?
 - re-check the paper, and compare with their no-comms results?
+
+checking paper, seems like the reward curve is not a million miles away from 2a 'proposal', albeit that is for unshared rewards.
+
+Let's try adding utterances
