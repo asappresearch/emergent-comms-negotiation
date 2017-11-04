@@ -1,3 +1,4 @@
+- enable cuda for utterances
 - add entropy regularization for utterances
 
 done:
