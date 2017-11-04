@@ -1,19 +1,22 @@
-# emergent_comms_negotiation
+# "Emergent Communications through Negotiation"
+
 Reproduce https://openreview.net/forum?id=Hk6WhagRW&amp;noteId=Hk6WhagRW , "Emergent Communication through Negotation", ICLR 2018 anonymous submission.
 
-To run on CPU:
+## To run
+
+CPU:
 ```
 python ecn.py --disable-comms
 ```
 
-To run on GPU:
+GPU:
 ```
 python ecn.py --disable-comms --enable-cuda
 ```
 
-Note that comms currently not yet implemented.
+Note that comms currently not yet implemented/working.
 
-Stdout layout:
+## Stdout layout
 
 eg if we have:
 ```
