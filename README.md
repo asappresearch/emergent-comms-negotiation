@@ -2,6 +2,11 @@
 
 Reproduce https://openreview.net/forum?id=Hk6WhagRW&amp;noteId=Hk6WhagRW , "Emergent Communication through Negotation", ICLR 2018 anonymous submission.
 
+## To install
+
+- install pytorch 0.2, https://pytorch.org
+- download this repo, `git clone https://github.com/asappinc/emergent_comms_negotiation`
+
 ## To run
 
 CPU:
