@@ -47,4 +47,4 @@ One negotation is printed out every 3 seconds or so, using the training set; the
 
 ### proposal, no comms, prosocial
 
-<img src="images/cfb35e5-gpu-labelled.png?raw=true" width="800" />
+<img src="images/cfb35e5-gpu-labelledb.png?raw=true" width="800" />
