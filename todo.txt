@@ -1,5 +1,4 @@
 - add entropy regularization for utterances
-- (cudaify)
 
 done:
 - add reward
@@ -19,3 +18,4 @@ done:
 - print example utterances/conversations
 - add in game length to logs somehow
 - add entropy regularization
+- (cudaify)
