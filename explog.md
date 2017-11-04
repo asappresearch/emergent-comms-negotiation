@@ -291,4 +291,4 @@ checking paper, seems like the reward curve is not a million miles away from 2a 
 
 Let's try adding utterances
 
-added utterances and entropy, training against 5c03992 using logfile logs/log_20171104_190934gpu2.log (gets ~520games/sec, with avg steps per game ~3.9, on g3.4xlarge)
+added utterances and entropy, training against 5c03992 using logfile logs/log_20171104_191305gpu2.log (gets ~520games/sec, with avg steps per game ~3.9, on g3.4xlarge)
