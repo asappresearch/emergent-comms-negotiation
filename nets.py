@@ -19,17 +19,11 @@ class NumberSequenceEncoder(nn.Module):
         seq_len = x.size()[1]
         x = x.transpose(0, 1)
         x = self.embedding(x)
-        if x.is_cuda:
-            state = (
-                    Variable(torch.cuda.FloatTensor(batch_size, self.embedding_size).fill_(0)),
-                    Variable(torch.cuda.FloatTensor(batch_size, self.embedding_size).fill_(0))
-                )
-        else:
-            state = (
-                    Variable(torch.zeros(batch_size, self.embedding_size)),
-                    Variable(torch.zeros(batch_size, self.embedding_size))
-                )
-
+        type_constr = torch.cuda if x.is_cuda else torch
+        state = (
+                Variable(type_constr.FloatTensor(batch_size, self.embedding_size).fill_(0)),
+                Variable(type_constr.FloatTensor(batch_size, self.embedding_size).fill_(0))
+            )
         for s in range(seq_len):
             state = self.lstm(x[s], state)
         return state[0]
