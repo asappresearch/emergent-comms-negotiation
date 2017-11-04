@@ -56,7 +56,7 @@ class TermPolicy(nn.Module):
 
 
 class UtterancePolicy(nn.Module):
-    def __init__(self, embedding_size=100, num_tokens=11, max_len=6):
+    def __init__(self, embedding_size=100, num_tokens=10, max_len=6):
         super().__init__()
         self.embedding_size = embedding_size
         self.num_tokens = num_tokens
