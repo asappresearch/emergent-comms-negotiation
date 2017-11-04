@@ -194,9 +194,6 @@ def run_episode(
         )
 
         still_alive_mask = 1 - term_node.data.view(batch_size).clone().byte()
-        # to think about off-by-one stuff, so let's say N is 3
-        # and t is 2, then we should finish
-        # so conditions is t + 1 >= N
         finished_N = t + 1 >= s.N
         if enable_cuda:
             finished_N = finished_N.cuda()
