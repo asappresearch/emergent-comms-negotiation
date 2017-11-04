@@ -45,6 +45,8 @@ One negotation is printed out every 3 seconds or so, using the training set; the
 
 ## Results so far
 
-### proposal, no comms
+### proposal, no comms, prosocial
 
 <img src="images/cfb35e5-gpu.png?raw=true" width="800" />
+
+(x-axis is number of episodes of 128 games)
