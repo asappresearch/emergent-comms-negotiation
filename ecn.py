@@ -93,21 +93,12 @@ def run_episode(
 
         c = torch.cat([s.pool, utility], 1)
         agent_model = agent_models[agent]
-        term_node, utterance_nodes, proposal_nodes, _entropy_loss = agent_model(
+        term_node, term_a, utterance_nodes, s.m_prev, proposal_nodes, this_proposal, _entropy_loss = agent_model(
             context=Variable(c),
             m_prev=Variable(s.m_prev),
             prev_proposal=Variable(s.last_proposal)
         )
         entropy_loss_by_agent[agent] += _entropy_loss
-        if enable_comms:
-            for i in range(6):
-                s.m_prev[:, i] = utterance_nodes[i].data
-
-        this_proposal = torch.zeros(batch_size, 3).long()
-        if enable_cuda:
-            this_proposal = this_proposal.cuda()
-        for p in range(3):
-            this_proposal[:, p] = proposal_nodes[p].data
 
         actions_t = []
         actions_t.append(term_node)

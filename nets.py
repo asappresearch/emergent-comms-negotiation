@@ -58,7 +58,7 @@ class TermPolicy(nn.Module):
         out_node = torch.bernoulli(x)
         x = x + eps
         entropy = - (x * x.log()).sum(1).sum()
-        return out_node, entropy
+        return out_node, out_node.data, entropy
 
 
 class UtterancePolicy(nn.Module):
@@ -86,7 +86,7 @@ class UtterancePolicy(nn.Module):
 
         # use first token as the initial dummy token
         last_token = torch.zeros(batch_size).long()
-        tokens = []
+        utterance_nodes = []
         while len(tokens) < self.max_len:
             token_onehot = self.onehot[last_token]
             token_onehot = token_onehot.view(1, batch_size, self.num_tokens)
@@ -94,25 +94,46 @@ class UtterancePolicy(nn.Module):
             out = self.h1(out)
             out = F.softmax(out)
             token_node = torch.multinomial(out.view(batch_size, self.num_tokens))
-            tokens.append(token_node)
+            utterance_nodes.append(token_node)
             last_token = token_node.data.view(batch_size)
-        return tokens
+
+        type_constr = torch.cuda if h_t.is_cuda else torch
+        utterance = type_constr.LongTensor(batch_size, self.max_len).fill_(0)
+        for i in range(6):
+            utterance[:, i] = utterance_nodes[i].data
+
+        entropy = 0  # placeholder
+        return utterance_nodes, utterance, entropy
 
 
 class ProposalPolicy(nn.Module):
-    def __init__(self, embedding_size=100, num_counts=6):
+    def __init__(self, embedding_size=100, num_counts=6, num_items=3):
         super().__init__()
         self.num_counts = num_counts
+        self.num_items = num_items
         self.embedding_size = embedding_size
-        self.h1 = nn.Linear(embedding_size, num_counts)
+        self.fcs = []
+        for i in range(num_items):
+            fc = nn.Linear(embedding_size, num_counts)
+            self.fcs.append(fc)
+            self.__setattr__('h1_%s' % i, fc)
 
     def forward(self, x, eps=1e-8):
-        x1 = self.h1(x)
-        x = F.softmax(x1)
-        out_node = torch.multinomial(x)
-        x = x + eps
-        entropy = (- x * x.log()).sum(1).sum()
-        return out_node, entropy
+        batch_size = x.size()[0]
+        nodes = []
+        entropy = 0
+        type_constr = torch.cuda if x.is_cuda else torch
+        proposal = type_constr.LongTensor(batch_size, self.num_items).fill_(0)
+        for i in range(self.num_items):
+            x1 = self.fcs[i](x)
+            x2 = F.softmax(x1)
+            node = torch.multinomial(x2)
+            nodes.append(node)
+            x2 = x2 + eps
+            entropy += (- x2 * x2.log()).sum(1).sum()
+            proposal[:, i] = node.data
+
+        return nodes, proposal, entropy
 
 
 class AgentModel(nn.Module):
@@ -136,38 +157,35 @@ class AgentModel(nn.Module):
 
         self.term_policy = TermPolicy()
         self.utterance_policy = UtterancePolicy()
-        self.proposal_policies = []
-        for i in range(3):
-            proposal_policy = ProposalPolicy()
-            self.proposal_policies.append(proposal_policy)
-            # do this so it registers its parameters:
-            self.__setattr__('policy%s' % i, proposal_policy)
+        self.proposal_policy = ProposalPolicy()
 
     def forward(self, context, m_prev, prev_proposal):
         batch_size = context.size()[0]
-        # print('batch_size', batch_size)
         c_h = self.context_net(context)
+        type_constr = torch.cuda if context.is_cuda else torch
         if self.enable_comms:
             m_h = self.utterance_net(m_prev)
         else:
-            if context.is_cuda:
-                m_h = Variable(torch.cuda.FloatTensor(batch_size, self.embedding_size).fill_(0))
-            else:
-                m_h = Variable(torch.zeros(batch_size, self.embedding_size))
+            m_h = Variable(type_constr.FloatTensor(batch_size, self.embedding_size).fill_(0))
         p_h = self.proposal_net(prev_proposal)
 
         h_t = torch.cat([c_h, m_h, p_h], -1)
         h_t = self.combined_net(h_t)
 
         entropy_loss = 0
-        term_node, entropy = self.term_policy(h_t)
+
+        term_node, term_a, entropy = self.term_policy(h_t)
         entropy_loss -= entropy * self.term_entropy_reg
-        utterance_token_nodes = []
+
+        utterance_nodes = []
+        utterance = None
         if self.enable_comms:
-            utterance_token_nodes = self.utterance_policy(h_t)
-        proposal_nodes = []
-        for proposal_policy in self.proposal_policies:
-            proposal_node, _entropy = proposal_policy(h_t)
-            proposal_nodes.append(proposal_node)
-            entropy_loss -= self.proposal_entropy_reg * _entropy
-        return term_node, utterance_token_nodes, proposal_nodes, entropy_loss
+            utterance_nodes, utterance, utterance_entropy = self.utterance_policy(h_t)
+            # entropy_loss -= self.itterance_entropy_reg * utterance_entropy
+        else:
+            utterance = type_constr.LongTensor(batch_size, 6).zero_()  # hard-coding 6 here is a bit hacky...
+
+        proposal_nodes, proposal, proposal_entropy = self.proposal_policy(h_t)
+        entropy_loss -= self.proposal_entropy_reg * proposal_entropy
+
+        return term_node, term_a, utterance_nodes, utterance, proposal_nodes, proposal, entropy_loss
