@@ -115,10 +115,10 @@ def run_episode(
                 print(' ACC' )
             else:
                 print(' ' + ''.join([str(s) for s in m_prev[0].view(-1).tolist()]), end='')
-                print(' %s/%s * %s, %s/%s * %s, %s/%s * %s' % (
-                    proposal_nodes[0].data[0][0], pool[0][0], utility[0][0],
-                    proposal_nodes[1].data[0][0], pool[0][1], utility[0][1],
-                    proposal_nodes[2].data[0][0], pool[0][2], utility[0][2]
+                print(' %s:%s/%s %s:%s/%s %s:%s/%s' % (
+                    utility[0][0], proposal_nodes[0].data[0][0], pool[0][0],
+                    utility[0][1], proposal_nodes[1].data[0][0], pool[0][1],
+                    utility[0][2], proposal_nodes[2].data[0][0], pool[0][2],
                 ), end='')
                 print('')
                 if t + 1 == N[0]:
