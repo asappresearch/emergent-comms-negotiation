@@ -35,3 +35,5 @@ Then:
   [utterance]   [utility 0]:[proposal 0]/[pool 0] ... etc ...
 ```
 - if the agents run out of time, last line will be `[out of time]`
+
+One negotation is printed out every 3 seconds or so, using the training set; the other negotations are executed silently.  There is no test set for now.
