@@ -1,3 +1,6 @@
+"""
+Note that this needs pytorch built from master, so that it works on cuda 9/v100.
+"""
 import json
 import time
 import argparse
@@ -142,10 +145,13 @@ class TermPolicy(nn.Module):
     def forward(self, x, eps=1e-8):
         x = self.h1(x)
         x = F.sigmoid(x)
-        out_node = torch.bernoulli(x)
+        m = torch.distributions.Bernoulli(x)
+        a = m.sample()
+        eligibility = m.log_prob(a)
+        a = a.data
         x = x + eps
         entropy = - (x * x.log()).sum(1).sum()
-        return out_node, entropy
+        return eligibility, a, entropy
 
 
 class UtterancePolicy(nn.Module):
@@ -180,7 +186,7 @@ class UtterancePolicy(nn.Module):
             out, state = self.lstm(Variable(token_onehot), state)
             out = self.h1(out)
             out = F.softmax(out)
-            token_node = torch.multinomial(out.view(batch_size, self.num_tokens))
+            token_node = torch.distributions.Multinomial(out.view(batch_size, self.num_tokens)).sample()
             tokens.append(token_node)
             last_token = token_node.data.view(batch_size)
         return tokens
@@ -196,10 +202,13 @@ class ProposalPolicy(nn.Module):
     def forward(self, x, eps=1e-8):
         x1 = self.h1(x)
         x = F.softmax(x1)
-        out_node = torch.multinomial(x)
+        m = torch.distributions.Multinomial(x)
+        a = m.sample()
+        eligibility = m.log_prob(a)
+        a = a.data
         x = x + eps
         entropy = (- x * x.log()).sum(1).sum()
-        return out_node, entropy
+        return eligibility, a, entropy
 
 
 class AgentModel(nn.Module):
@@ -247,17 +256,19 @@ class AgentModel(nn.Module):
         h_t = self.combined_net(h_t)
 
         entropy_loss = 0
-        term_node, entropy = self.term_policy(h_t)
+        term_e, term_a, entropy = self.term_policy(h_t)
         entropy_loss -= entropy * self.term_entropy_reg
         utterance_token_nodes = []
         if self.enable_comms:
             utterance_token_nodes = self.utterance_policy(h_t)
-        proposal_nodes = []
+        proposal_as = []
+        proposal_es = []
         for proposal_policy in self.proposal_policies:
-            proposal_node, _entropy = proposal_policy(h_t)
-            proposal_nodes.append(proposal_node)
+            proposal_e, proposal_a, _entropy = proposal_policy(h_t)
+            proposal_es.append(proposal_e)
+            proposal_as.append(proposal_a)
             entropy_loss -= self.proposal_entropy_reg * _entropy
-        return term_node, utterance_token_nodes, proposal_nodes, entropy_loss
+        return term_e, term_a, utterance_token_nodes, proposal_es, proposal_as, entropy_loss
 
 
 def run_episode(
@@ -308,7 +319,7 @@ def run_episode(
 
         c = torch.cat([pool, utility], 1)
         agent_model = agent_models[agent]
-        term_node, utterance_nodes, proposal_nodes, _entropy_loss = agent_model(
+        term_e, term_a, utterance_nodes, proposal_es, proposal_as, _entropy_loss = agent_model(
             context=Variable(c),
             m_prev=Variable(m_prev),
             prev_proposal=Variable(last_proposal)
@@ -322,28 +333,29 @@ def run_episode(
         if enable_cuda:
             this_proposal = this_proposal.cuda()
         for p in range(3):
-            this_proposal[:, p] = proposal_nodes[p].data
+            this_proposal[:, p] = proposal_as[p]
 
         actions_t = []
-        actions_t.append(term_node)
+        actions_t.append(term_e)
         if enable_comms:
             actions_t += utterance_nodes
         if enable_proposal:
-            actions_t += proposal_nodes
+            actions_t += proposal_es
         if render and b_0_present:
             speaker = 'A' if agent == 0 else 'B'
-            print('  %s t=%s' % (speaker, term_node.data[0][0]), end='')
+            print('  %s t=%s' % (speaker, term_a[0][0]), end='')
             print(' u=' + ''.join([str(s) for s in m_prev[0].view(-1).tolist()]), end='')
+            # print('proposal_as[0].size()', proposal_as[0].size())
             print(' p=%s,%s,%s' % (
-                proposal_nodes[0].data[0][0],
-                proposal_nodes[1].data[0][0],
-                proposal_nodes[2].data[0][0]
+                proposal_as[0][0],
+                proposal_as[1][0],
+                proposal_as[2][0]
             ), end='')
             print('')
         actions_by_timestep.append(actions_t)
 
         # calcualate rewards for any that just finished
-        reward_eligible_mask = term_node.data.view(batch_size).clone().byte()
+        reward_eligible_mask = term_a.view(batch_size).clone().byte()
         if t == 0:
             # on first timestep theres no actual proposal yet, so score zero if terminate
             reward_eligible_mask.fill_(0)
@@ -383,7 +395,7 @@ def run_episode(
 
                 alive_games[b]['rewards'] = rewards
 
-        still_alive_mask = 1 - term_node.data.view(batch_size).clone().byte()
+        still_alive_mask = 1 - term_a.view(batch_size).clone().byte()
         finished_N = t >= N
         if enable_cuda:
             finished_N = finished_N.cuda()
@@ -481,7 +493,7 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
 
         for i in range(2):
             agent_opts[i].zero_grad()
-        nodes_by_agent = [[], []]
+        # nodes_by_agent = [[], []]
         alive_rewards = torch.zeros(batch_size, 2)
         all_rewards = torch.zeros(batch_size, 2)
         for i in range(2):
@@ -493,21 +505,30 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
             alive_rewards = alive_rewards.cuda()
         alive_rewards -= baseline
         T = len(actions)
+        loss_by_agent = [Variable(torch.zeros(1)), Variable(torch.zeros(1))]
+        if enable_cuda:
+            loss_by_agent = [Variable(torch.zeros(1).cuda()), Variable(torch.zeros(1).cuda())]
         for t in range(T):
             _batch_size = alive_rewards.size()[0]
             agent = 0 if t % 2 == 0 else 1
             if len(actions[t]) > 0:
                 for action in actions[t]:
-                    action.reinforce(alive_rewards[:, agent].contiguous().view(_batch_size, 1))
-            nodes_by_agent[agent] += actions[t]
+                    # print('type(action)', type(action))
+                    # print('type(action.data)', type(action.data))
+                    # print('type(alive_rewards[:, agent].contiguous().view(_batch_size, 1))', type(alive_rewards[:, agent].contiguous().view(_batch_size, 1)))
+                    loss_by_agent[agent] -= (action * Variable(alive_rewards[:, agent].contiguous().view(_batch_size, 1))).sum()
+                    # action.reinforce(alive_rewards[:, agent].contiguous().view(_batch_size, 1))
+            # nodes_by_agent[agent] += actions[t]
             mask = alive_masks[t]
             if mask.max() == 0:
                 break
             alive_rewards = alive_rewards[mask.nonzero().long().view(-1)]
         for i in range(2):
-            if len(nodes_by_agent[i]) > 0:
-                autograd.backward([entropy_loss_by_agent[i]] + nodes_by_agent[i], [None] + len(nodes_by_agent[i]) * [None])
-                agent_opts[i].step()
+            loss_by_agent[i] += entropy_loss_by_agent[i]
+            # if len(nodes_by_agent[i]) > 0:
+                # autograd.backward([entropy_loss_by_agent[i]] + nodes_by_agent[i], [None] + len(nodes_by_agent[i]) * [None])
+            loss_by_agent[i].backward()
+            agent_opts[i].step()
 
         rewards_sum += all_rewards.sum(0).cpu()
         steps_sum += np.sum(steps)
