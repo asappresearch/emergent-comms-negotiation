@@ -153,11 +153,12 @@ def run_episode(
         games.append({'rewards': [0, 0]})
     alive_games = games.copy()
 
+    type_constr = torch.cuda if enable_cuda else torch
     b_0_present = True  # is the first row of batch present? strictly for rendering purposes
-    entropy_loss_by_agent = [Variable(torch.zeros(1)), Variable(torch.zeros(1))]
-    if enable_cuda:
-        entropy_loss_by_agent[0] = entropy_loss_by_agent[0].cuda()
-        entropy_loss_by_agent[1] = entropy_loss_by_agent[1].cuda()
+    entropy_loss_by_agent = [
+        Variable(type_constr.FloatTensor(1).fill_(0)),
+        Variable(type_constr.FloatTensor(1).fill_(0))
+    ]
     if render:
         print('  ')
     for t in range(10):
