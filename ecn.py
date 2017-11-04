@@ -165,7 +165,10 @@ def run_episode(
                 alive_games[b]['rewards'] = rewards
 
         still_alive_mask = 1 - term_node.data.view(batch_size).clone().byte()
-        finished_N = t >= N
+        # to think about off-by-one stuff, so let's say N is 3
+        # and t is 2, then we should finish
+        # so conditions is t + 1 >= N
+        finished_N = t + 1 >= N
         if enable_cuda:
             finished_N = finished_N.cuda()
         still_alive_mask[finished_N] = 0
@@ -201,6 +204,7 @@ def run_episode(
 
     if render:
         print('  r: %.2f' % np.mean(g['rewards']))
+        print('  ')
 
     return actions_by_timestep, [g['rewards'] for g in games], [g['steps'] for g in games], alive_masks, entropy_loss_by_agent
 
