@@ -9,27 +9,9 @@ import torch
 from torch import autograd, optim, nn
 from torch.autograd import Variable
 import torch.nn.functional as F
+
 import nets
-
-
-def sample_items(batch_size):
-    pool = torch.from_numpy(np.random.choice(6, (batch_size, 3), replace=True))
-    return pool
-
-
-def sample_utility(batch_size):
-    u = torch.zeros(3).long()
-    while u.sum() == 0:
-        u = torch.from_numpy(np.random.choice(11, (batch_size, 3), replace=True))
-    return u
-
-
-def sample_N(batch_size):
-    N = np.random.poisson(7, batch_size)
-    N = np.maximum(4, N)
-    N = np.minimum(10, N)
-    N = torch.from_numpy(N)
-    return N
+import sampling
 
 
 def run_episode(
@@ -41,11 +23,11 @@ def run_episode(
         batch_size,
         render=False):
     # following take not much memory, not fluffed up yet:
-    N = sample_N(batch_size).int()
-    pool = sample_items(batch_size)
+    N = sampling.sample_N(batch_size).int()
+    pool = sampling.sample_items(batch_size)
     utilities = torch.zeros(batch_size, 2, 3).long()
-    utilities[:, 0] = sample_utility(batch_size)
-    utilities[:, 1] = sample_utility(batch_size)
+    utilities[:, 0] = sampling.sample_utility(batch_size)
+    utilities[:, 1] = sampling.sample_utility(batch_size)
     last_proposal = torch.zeros(batch_size, 3).long()
     m_prev = torch.zeros(batch_size, 6).long()
 
