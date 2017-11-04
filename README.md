@@ -33,7 +33,7 @@ eg if we have:
 ```
 
 Then:
-- each of the first 4 lines is the action of a single agent
+- each of the first 4 lines here is the action of a single agent
 - the `ACC` line is the agent accepting previous proposal
 - each proposal line is laid out as:
 ```
