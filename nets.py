@@ -70,12 +70,6 @@ class UtterancePolicy(nn.Module):
         )
         self.h1 = nn.Linear(embedding_size, num_tokens)
 
-    # def cuda(self):
-    #     print('utterancepolkcy.cuda()')
-    #     res = super().cuda()
-    #     self.onehot = self.onehot.cuda()
-    #     return res
-
     def forward(self, h_t):
         batch_size = h_t.size()[0]
 
@@ -86,12 +80,8 @@ class UtterancePolicy(nn.Module):
             h_t.view(1, batch_size, self.embedding_size),
             Variable(type_constr.FloatTensor(1, batch_size, self.embedding_size).fill_(0))
         )
-        # print('type(self.onehot)', type(self.onehot))
-        # a = self.cuda()
-        # print('type(a.onehot)', type(a.onehot))
 
         # use first token as the initial dummy token
-        # last_token = torch.zeros(batch_size).long()
         last_token = type_constr.LongTensor(batch_size).fill_(0)
         utterance_nodes = []
         while len(utterance_nodes) < self.max_len:
@@ -167,12 +157,6 @@ class AgentModel(nn.Module):
         self.term_policy = TermPolicy()
         self.utterance_policy = UtterancePolicy()
         self.proposal_policy = ProposalPolicy()
-
-    # def cuda(self):
-    #     print('agentmode.cuda()')
-    #     res = super().cuda()
-    #     print('res', res)
-    #     return res
 
     def forward(self, pool, utility, m_prev, prev_proposal):
         batch_size = pool.size()[0]
