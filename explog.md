@@ -281,7 +281,7 @@ speed at this point, after convergence, ie avg steps/game ~4.2:
 - g3.4xlarge: ~880 games/sec
 - v100: ~1380 games/sec (using cuda9 branch, https://github.com/ASAPPinc/emergent_comms_negotiation/tree/cuda9 , ~~not very tested...~~ but reward-curve flat-lined, after ~1 hour; going to abandon this branch for now)
 
-gpu, no comms, logfile: logs/log_20171104_144936.log
+gpu, no comms, logs/log_20171104_144936.log
 
 Looking at the reward curves, looks like they're plateau'ing. Possible next approaches:
 - add utterances?
@@ -290,3 +290,5 @@ Looking at the reward curves, looks like they're plateau'ing. Possible next appr
 checking paper, seems like the reward curve is not a million miles away from 2a 'proposal', albeit that is for unshared rewards.
 
 Let's try adding utterances
+
+added utterances and entropy, training against 5c03992 using logfile logs/log_20171104_190934gpu2.log (gets ~520games/sec, with avg steps per game ~3.9, on g3.4xlarge)
