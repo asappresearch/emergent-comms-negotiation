@@ -4,9 +4,7 @@ from torch.autograd import Variable
 import torch.nn.functional as F
 
 
-# In hindsight, all three of the next three classes are identical, and could be
-# merged :)
-class ContextNet(nn.Module):
+class NumberSequenceEncoder(nn.Module):
     def __init__(self, embedding_size=100):
         super().__init__()
         self.embedding_size = embedding_size
@@ -32,64 +30,6 @@ class ContextNet(nn.Module):
                     Variable(torch.zeros(batch_size, self.embedding_size))
                 )
 
-        for s in range(seq_len):
-            state = self.lstm(x[s], state)
-        return state[0]
-
-
-class UtteranceNet(nn.Module):
-    def __init__(self, embedding_size=100):
-        super().__init__()
-        self.embedding_size = embedding_size
-        self.embedding = nn.Embedding(11, embedding_size)
-        self.lstm = nn.LSTMCell(
-            input_size=embedding_size,
-            hidden_size=embedding_size)
-
-    def forward(self, x):
-        batch_size = x.size()[0]
-        seq_len = x.size()[1]
-        x = x.transpose(0, 1)
-        x = self.embedding(x)
-        if x.is_cuda:
-            state = (
-                    Variable(torch.cuda.FloatTensor(batch_size, self.embedding_size).fill_(0)),
-                    Variable(torch.cuda.FloatTensor(batch_size, self.embedding_size).fill_(0))
-                )
-        else:
-            state = (
-                    Variable(torch.zeros(batch_size, self.embedding_size)),
-                    Variable(torch.zeros(batch_size, self.embedding_size))
-                )
-        for s in range(seq_len):
-            state = self.lstm(x[s], state)
-        return state[0]
-
-
-class ProposalNet(nn.Module):
-    def __init__(self, embedding_size=100):
-        super().__init__()
-        self.embedding_size = embedding_size
-        self.embedding = nn.Embedding(11, embedding_size)
-        self.lstm = nn.LSTMCell(
-            input_size=embedding_size,
-            hidden_size=embedding_size)
-
-    def forward(self, x):
-        batch_size = x.size()[0]
-        seq_len = x.size()[1]
-        x = x.transpose(0, 1)
-        x = self.embedding(x)
-        if x.is_cuda:
-            state = (
-                    Variable(torch.cuda.FloatTensor(batch_size, self.embedding_size).fill_(0)),
-                    Variable(torch.cuda.FloatTensor(batch_size, self.embedding_size).fill_(0))
-                )
-        else:
-            state = (
-                    Variable(torch.zeros(batch_size, self.embedding_size)),
-                    Variable(torch.zeros(batch_size, self.embedding_size))
-                )
         for s in range(seq_len):
             state = self.lstm(x[s], state)
         return state[0]
@@ -187,9 +127,9 @@ class AgentModel(nn.Module):
         self.embedding_size = embedding_size
         self.enable_comms = enable_comms
         self.enable_proposal = enable_proposal
-        self.context_net = ContextNet()
-        self.utterance_net = UtteranceNet()
-        self.proposal_net = ProposalNet()
+        self.context_net = NumberSequenceEncoder()
+        self.utterance_net = NumberSequenceEncoder()
+        self.proposal_net = NumberSequenceEncoder()
         self.proposal_net.embedding = self.context_net.embedding
 
         self.combined_net = CombinedNet()
