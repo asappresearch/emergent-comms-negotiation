@@ -11,15 +11,15 @@ Reproduce https://openreview.net/forum?id=Hk6WhagRW&amp;noteId=Hk6WhagRW , "Emer
 
 CPU:
 ```
-python ecn.py --disable-comms
+python ecn.py [--disable-comms]
 ```
 
 GPU:
 ```
-python ecn.py --disable-comms --enable-cuda
+python ecn.py [--disable-comms] --enable-cuda
 ```
 
-Note that comms currently not yet implemented/working.
+~~Note that comms currently not yet implemented/working.~~
 
 ## Stdout layout
 
