@@ -42,3 +42,9 @@ Then:
 - if the agents run out of time, last line will be `[out of time]`
 
 One negotation is printed out every 3 seconds or so, using the training set; the other negotations are executed silently.  There is no test set for now.
+
+## Results so far
+
+### proposal, no comms
+
+<img src="images/cfb35e5-gpu.png?raw=true" width="800" />
