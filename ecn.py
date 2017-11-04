@@ -14,20 +14,20 @@ import nets
 import sampling
 
 
-def render_action(t, agent, s, proposal_nodes, term_node):
+def render_action(t, agent, s, prop, term):
     speaker = 'A' if agent == 0 else 'B'
     utility = s.utilities[:, agent]
     print('  ', end='')
     if speaker == 'B':
         print('                                   ', end='')
-    if term_node.data[0][0]:
+    if term[0][0]:
         print(' ACC' )
     else:
         print(' ' + ''.join([str(v) for v in s.m_prev[0].view(-1).tolist()]), end='')
         print(' %s:%s/%s %s:%s/%s %s:%s/%s' % (
-            utility[0][0], proposal_nodes[0].data[0][0], s.pool[0][0],
-            utility[0][1], proposal_nodes[1].data[0][0], s.pool[0][1],
-            utility[0][2], proposal_nodes[2].data[0][0], s.pool[0][2],
+            utility[0][0], prop[0][0], s.pool[0][0],
+            utility[0][1], prop[0][1], s.pool[0][1],
+            utility[0][2], prop[0][2], s.pool[0][2],
         ), end='')
         print('')
         if t + 1 == s.N[0]:
@@ -180,8 +180,8 @@ def run_episode(
                 t=t,
                 agent=agent,
                 s=s,
-                term_node=term_node,
-                proposal_nodes=proposal_nodes
+                term=term_a,
+                prop=this_proposal
             )
 
         calc_rewards(
@@ -190,7 +190,7 @@ def run_episode(
             prosocial=prosocial,
             agent=agent,
             alive_games=alive_games,
-            term=term_node.data
+            term=term_a
         )
 
         still_alive_mask = 1 - term_node.data.view(batch_size).clone().byte()
