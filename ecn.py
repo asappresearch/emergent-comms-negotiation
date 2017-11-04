@@ -14,25 +14,49 @@ import nets
 import sampling
 
 
-def render_action(t, N, agent, utility, proposal_nodes, pool, m_prev, term_node):
+def render_action(t, agent, s, proposal_nodes, term_node):
     speaker = 'A' if agent == 0 else 'B'
-    # print('  %s' % speaker, end='')
-    # print('  ')
+    utility = s.utilities[:, agent]
     print('  ', end='')
     if speaker == 'B':
         print('                                   ', end='')
     if term_node.data[0][0]:
         print(' ACC' )
     else:
-        print(' ' + ''.join([str(s) for s in m_prev[0].view(-1).tolist()]), end='')
+        print(' ' + ''.join([str(v) for v in s.m_prev[0].view(-1).tolist()]), end='')
         print(' %s:%s/%s %s:%s/%s %s:%s/%s' % (
-            utility[0][0], proposal_nodes[0].data[0][0], pool[0][0],
-            utility[0][1], proposal_nodes[1].data[0][0], pool[0][1],
-            utility[0][2], proposal_nodes[2].data[0][0], pool[0][2],
+            utility[0][0], proposal_nodes[0].data[0][0], s.pool[0][0],
+            utility[0][1], proposal_nodes[1].data[0][0], s.pool[0][1],
+            utility[0][2], proposal_nodes[2].data[0][0], s.pool[0][2],
         ), end='')
         print('')
-        if t + 1 == N[0]:
+        if t + 1 == s.N[0]:
             print('  [out of time]')
+
+
+class State(object):
+    def __init__(self, batch_size):
+        self.N = sampling.sample_N(batch_size).int()
+        self.pool = sampling.sample_items(batch_size)
+        self.utilities = torch.zeros(batch_size, 2, 3).long()
+        self.utilities[:, 0] = sampling.sample_utility(batch_size)
+        self.utilities[:, 1] = sampling.sample_utility(batch_size)
+        self.last_proposal = torch.zeros(batch_size, 3).long()
+        self.m_prev = torch.zeros(batch_size, 6).long()
+
+    def cuda(self):
+        self.N = self.N.cuda()
+        self.pool = self.pool.cuda()
+        self.utilities = self.utilities.cuda()
+        self.last_proposal = self.last_proposal.cuda()
+        self.m_prev = self.m_prev.cuda()
+
+    def sieve_(self, still_alive_idxes):
+        self.N = self.N[still_alive_idxes]
+        self.pool = self.pool[still_alive_idxes]
+        self.utilities = self.utilities[still_alive_idxes]
+        self.last_proposal = self.last_proposal[still_alive_idxes]
+        self.m_prev = self.m_prev[still_alive_idxes]
 
 
 def run_episode(
@@ -43,20 +67,10 @@ def run_episode(
         agent_models,
         batch_size,
         render=False):
-    N = sampling.sample_N(batch_size).int()
-    pool = sampling.sample_items(batch_size)
-    utilities = torch.zeros(batch_size, 2, 3).long()
-    utilities[:, 0] = sampling.sample_utility(batch_size)
-    utilities[:, 1] = sampling.sample_utility(batch_size)
-    last_proposal = torch.zeros(batch_size, 3).long()
-    m_prev = torch.zeros(batch_size, 6).long()
+    s = State(batch_size=batch_size)
 
     if enable_cuda:
-        N = N.cuda()
-        pool = pool.cuda()
-        utilities = utilities.cuda()
-        last_proposal = last_proposal.cuda()
-        m_prev = m_prev.cuda()
+        s.cuda()
 
     games = []
     actions_by_timestep = []
@@ -75,19 +89,19 @@ def run_episode(
     for t in range(10):
         agent = 0 if t % 2 == 0 else 1
         batch_size = len(alive_games)
-        utility = utilities[:, agent]
+        utility = s.utilities[:, agent]
 
-        c = torch.cat([pool, utility], 1)
+        c = torch.cat([s.pool, utility], 1)
         agent_model = agent_models[agent]
         term_node, utterance_nodes, proposal_nodes, _entropy_loss = agent_model(
             context=Variable(c),
-            m_prev=Variable(m_prev),
-            prev_proposal=Variable(last_proposal)
+            m_prev=Variable(s.m_prev),
+            prev_proposal=Variable(s.last_proposal)
         )
         entropy_loss_by_agent[agent] += _entropy_loss
         if enable_comms:
             for i in range(6):
-                m_prev[:, i] = utterance_nodes[i].data
+                s.m_prev[:, i] = utterance_nodes[i].data
 
         this_proposal = torch.zeros(batch_size, 3).long()
         if enable_cuda:
@@ -105,14 +119,12 @@ def run_episode(
 
         if render and b_0_present:
             render_action(
-                agent=agent,
-                pool=pool,
-                utility=utility,
-                m_prev=m_prev,
-                term_node=term_node,
-                proposal_nodes=proposal_nodes,
                 t=t,
-                N=N)
+                agent=agent,
+                s=s,
+                term_node=term_node,
+                proposal_nodes=proposal_nodes
+            )
 
         # calcualate rewards for any that just finished
         reward_eligible_mask = term_node.data.view(batch_size).clone().byte()
@@ -120,7 +132,7 @@ def run_episode(
             # on first timestep theres no actual proposal yet, so score zero if terminate
             reward_eligible_mask.fill_(0)
         if reward_eligible_mask.max() > 0:
-            exceeded_pool, _ = ((last_proposal - pool) > 0).max(1)
+            exceeded_pool, _ = ((s.last_proposal - s.pool) > 0).max(1)
             if exceeded_pool.max() > 0:
                 reward_eligible_mask[exceeded_pool.nonzero().long().view(-1)] = 0
 
@@ -128,26 +140,26 @@ def run_episode(
             proposer = 1 - agent
             accepter = agent
             proposal = torch.zeros(batch_size, 2, 3).long()
-            proposal[:, proposer] = last_proposal
-            proposal[:, accepter] = pool - last_proposal
-            max_utility, _ = utilities.max(1)
+            proposal[:, proposer] = s.last_proposal
+            proposal[:, accepter] = s.pool - s.last_proposal
+            max_utility, _ = s.utilities.max(1)
 
             reward_eligible_idxes = reward_eligible_mask.nonzero().long().view(-1)
             for b in reward_eligible_idxes:
                 rewards = [0, 0]
                 for i in range(2):
-                    rewards[i] = utilities[b, i].cpu().dot(proposal[b, i].cpu())
+                    rewards[i] = s.utilities[b, i].cpu().dot(proposal[b, i].cpu())
 
                 if prosocial:
                     total_actual_reward = np.sum(rewards)
-                    total_possible_reward = max_utility[b].cpu().dot(pool[b].cpu())
+                    total_possible_reward = max_utility[b].cpu().dot(s.pool[b].cpu())
                     scaled_reward = 0
                     if total_possible_reward != 0:
                         scaled_reward = total_actual_reward / total_possible_reward
                     rewards = [scaled_reward, scaled_reward]
                 else:
                     for i in range(2):
-                        max_possible = utilities[b, i].cpu().dot(pool.cpu())
+                        max_possible = s.utilities[b, i].cpu().dot(s.pool.cpu())
                         if max_possible != 0:
                             rewards[i] /= max_possible
 
@@ -157,7 +169,7 @@ def run_episode(
         # to think about off-by-one stuff, so let's say N is 3
         # and t is 2, then we should finish
         # so conditions is t + 1 >= N
-        finished_N = t + 1 >= N
+        finished_N = t + 1 >= s.N
         if enable_cuda:
             finished_N = finished_N.cuda()
         still_alive_mask[finished_N] = 0
@@ -170,17 +182,14 @@ def run_episode(
         if still_alive_mask.max() == 0:
             break
 
-        # filter the state through the still alive mask:
+        if still_alive_mask[0] == 0:
+            b_0_present = False
         still_alive_idxes = still_alive_mask.nonzero().long().view(-1)
         if enable_cuda:
             still_alive_idxes = still_alive_idxes.cuda()
-        pool = pool[still_alive_idxes]
-        last_proposal = this_proposal[still_alive_idxes]
-        utilities = utilities[still_alive_idxes]
-        m_prev = m_prev[still_alive_idxes]
-        N = N[still_alive_idxes]
-        if still_alive_mask[0] == 0:
-            b_0_present = False
+        # filter the state through the still alive mask:
+        s.last_proposal = this_proposal
+        s.sieve_(still_alive_idxes)
 
         new_alive_games = []
         for i in still_alive_idxes:
