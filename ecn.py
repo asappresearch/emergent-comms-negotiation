@@ -181,20 +181,16 @@ def run_episode(
 
         if still_alive_mask.max() == 0:
             break
-
         if still_alive_mask[0] == 0:
             b_0_present = False
+
         still_alive_idxes = still_alive_mask.nonzero().long().view(-1)
         if enable_cuda:
             still_alive_idxes = still_alive_idxes.cuda()
         # filter the state through the still alive mask:
         s.last_proposal = this_proposal
         s.sieve_(still_alive_idxes)
-
-        new_alive_games = []
-        for i in still_alive_idxes:
-            new_alive_games.append(alive_games[i])
-        alive_games = new_alive_games
+        alive_games = [alive_games[b] for b in still_alive_idxes]
 
     for g in games:
         if 'steps' not in g:
