@@ -1,5 +1,4 @@
-- enable cuda for utterances
-- add entropy regularization for utterances
+todo:
 
 done:
 - add reward
@@ -20,3 +19,5 @@ done:
 - add in game length to logs somehow
 - add entropy regularization
 - (cudaify)
+- enable cuda for utterances
+- add entropy regularization for utterances

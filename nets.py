@@ -68,7 +68,7 @@ class UtterancePolicy(nn.Module):
         )
         self.h1 = nn.Linear(embedding_size, num_tokens)
 
-    def forward(self, h_t):
+    def forward(self, h_t, eps=1e-8):
         batch_size = h_t.size()[0]
 
         type_constr = torch.cuda if h_t.is_cuda else torch
@@ -79,6 +79,7 @@ class UtterancePolicy(nn.Module):
         utterance_nodes = []
         type_constr = torch.cuda if h_t.is_cuda else torch
         utterance = type_constr.LongTensor(batch_size, self.max_len).fill_(0)
+        entropy = 0
         for i in range(6):
             embedded = self.embedding(Variable(last_token))
             h, c = self.lstm(embedded, (h, c))
@@ -88,7 +89,11 @@ class UtterancePolicy(nn.Module):
             utterance_nodes.append(token_node)
             last_token = token_node.data.view(batch_size)
             utterance[:, i] = last_token
-        entropy = 0  # placeholder
+            out = out + eps
+            # print('out.size()', out.size())
+            entropy -= (out * out.log()).sum(1).sum()
+            # print('entropy', entropy)
+            # asdfasd
         return utterance_nodes, utterance, entropy
 
 
