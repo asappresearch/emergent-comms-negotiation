@@ -56,17 +56,17 @@ class TermPolicy(nn.Module):
 
 
 class UtterancePolicy(nn.Module):
-    def __init__(self, embedding_size=100, num_tokens=10, max_len=6):
+    def __init__(self, embedding_size=100, num_tokens=11, max_len=6):
         super().__init__()
         # use this to make onehot
         self.embedding_size = embedding_size
-        self.onehot = torch.eye(num_tokens)
+        # self.onehot = torch.eye(num_tokens)
         self.num_tokens = num_tokens
         self.max_len = max_len
-        self.lstm = nn.LSTM(
-            input_size=num_tokens,
-            hidden_size=embedding_size,
-            num_layers=1
+        self.embedding = nn.Embedding(num_tokens, embedding_size)
+        self.lstm = nn.LSTMCell(
+            input_size=embedding_size,
+            hidden_size=embedding_size
         )
         self.h1 = nn.Linear(embedding_size, num_tokens)
 
@@ -74,31 +74,42 @@ class UtterancePolicy(nn.Module):
         batch_size = h_t.size()[0]
 
         type_constr = torch.cuda if h_t.is_cuda else torch
-        if h_t.is_cuda:
-            self.onehot = self.onehot.cuda()
-        state = (
-            h_t.view(1, batch_size, self.embedding_size),
-            Variable(type_constr.FloatTensor(1, batch_size, self.embedding_size).fill_(0))
-        )
+        # if h_t.is_cuda:
+        #     self.onehot = self.onehot.cuda()
+        # state  = (
+        h =h_t
+        c = Variable(type_constr.FloatTensor(batch_size, self.embedding_size).fill_(0))
+        # )
+        # print('state[0].size()', state[0].size())
+        # print('state[1].size()', state[1].size())
+        # h, c = state
 
-        # use first token as the initial dummy token
         last_token = type_constr.LongTensor(batch_size).fill_(0)
         utterance_nodes = []
-        while len(utterance_nodes) < self.max_len:
-            token_onehot = self.onehot[last_token]
-            token_onehot = token_onehot.view(1, batch_size, self.num_tokens)
-            out, state = self.lstm(Variable(token_onehot), state)
-            out = self.h1(out)
-            out = F.softmax(out)
-            token_node = torch.multinomial(out.view(batch_size, self.num_tokens))
-            utterance_nodes.append(token_node)
-            last_token = token_node.data.view(batch_size)
-
         type_constr = torch.cuda if h_t.is_cuda else torch
         utterance = type_constr.LongTensor(batch_size, self.max_len).fill_(0)
         for i in range(6):
-            utterance[:, i] = utterance_nodes[i].data
-
+            # token_onehot = self.onehot[last_token]
+            # print('token_onehot.size()', token_onehot.size())
+            # print('token_onehot[:5]', token_onehot[:5])
+            # token_onehot = token_onehot.view(1, batch_size, self.num_tokens)
+            embedded = self.embedding(Variable(last_token))
+            # print('embedded.size()', embedded.size())
+            # print('h_t.size()', h_t.size())
+            # print('state[0].size()', state[0].size())
+            # print('state[1].size()', state[1].size())
+            # print('h.size()', h.size())
+            h, c = self.lstm(embedded, (h, c))
+            # print('h.size()', h.size())
+            out = self.h1(h)
+            # print('out.size()', out.size())
+            out = F.softmax(out)
+            # print('out.size()', out.size())
+            token_node = torch.multinomial(out)
+            utterance_nodes.append(token_node)
+            last_token = token_node.data.view(batch_size)
+            utterance[:, i] = last_token
+        # asdf
         entropy = 0  # placeholder
         return utterance_nodes, utterance, entropy
 
