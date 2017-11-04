@@ -34,6 +34,30 @@ def render_action(t, agent, s, proposal_nodes, term_node):
             print('  [out of time]')
 
 
+def save_model(model_file, agent_models, agent_opts, start_time, episode):
+    state = {}
+    for i in range(2):
+        state['agent%s' % i] = {}
+        state['agent%s' % i]['model_state'] = agent_models[i].state_dict()
+        state['agent%s' % i]['opt_state'] = agent_opts[i].state_dict()
+    state['episode'] = episode
+    state['elapsed_time'] = time.time() - start_time
+    with open(model_file, 'wb') as f:
+        torch.save(state, f)
+
+
+def load_model(model_file, agent_models, agent_opts):
+    with open(model_file, 'rb') as f:
+        state = torch.load(f)
+    for i in range(2):
+        agent_models[i].load_state_dict(state['agent%s' % i]['model_state'])
+        agent_opts[i].load_state_dict(state['agent%s' % i]['opt_state'])
+    episode = state['episode']
+    # create a kind of 'virtual' start_time
+    start_time = time.time() - state['elapsed_time']
+    return episode, start_time
+
+
 class State(object):
     def __init__(self, batch_size):
         self.N = sampling.sample_N(batch_size).int()
@@ -215,14 +239,10 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
         agent_models.append(model)
         agent_opts.append(optim.Adam(params=agent_models[i].parameters()))
     if path.isfile(model_file):
-        with open(model_file, 'rb') as f:
-            state = torch.load(f)
-        for i in range(2):
-            agent_models[i].load_state_dict(state['agent%s' % i]['model_state'])
-            agent_opts[i].load_state_dict(state['agent%s' % i]['opt_state'])
-        episode = state['episode']
-        # create a kind of 'virtual' start_time
-        start_time = time.time() - state['elapsed_time']
+        episode, start_time = load_model(
+            model_file=model_file,
+            agent_models=agent_models,
+            agent_opts=agent_opts)
         print('loaded model')
     last_print = time.time()
     rewards_sum = torch.zeros(2)
@@ -311,15 +331,12 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
             rewards_sum = torch.zeros(2)
             count_sum = 0
         if time.time() - last_save >= 30.0:
-            state = {}
-            for i in range(2):
-                state['agent%s' % i] = {}
-                state['agent%s' % i]['model_state'] = agent_models[i].state_dict()
-                state['agent%s' % i]['opt_state'] = agent_opts[i].state_dict()
-            state['episode'] = episode
-            state['elapsed_time'] = time.time() - start_time
-            with open(model_file, 'wb') as f:
-                torch.save(state, f)
+            save_model(
+                model_file=model_file,
+                agent_models=agent_models,
+                agent_opts=agent_opts,
+                start_time=start_time,
+                episode=episode)
             print('saved model')
             last_save = time.time()
 
