@@ -1,4 +1,4 @@
-# "Emergent Communications through Negotiation"
+# "Emergent Communication through Negotiation"
 
 Reproduce https://openreview.net/forum?id=Hk6WhagRW&amp;noteId=Hk6WhagRW , "Emergent Communication through Negotation", ICLR 2018 anonymous submission.
 
