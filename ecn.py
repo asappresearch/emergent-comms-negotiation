@@ -229,7 +229,7 @@ def run_episode(
 
 
 def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, batch_size,
-        term_entropy_reg, proposal_entropy_reg, enable_cuda):
+        term_entropy_reg, utterance_entropy_reg, proposal_entropy_reg, enable_cuda):
     if seed is not None:
         np.random.seed(seed)
         torch.manual_seed(seed)
@@ -242,6 +242,7 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
             enable_comms=enable_comms,
             enable_proposal=enable_proposal,
             term_entropy_reg=term_entropy_reg,
+            utterance_entropy_reg=utterance_entropy_reg,
             proposal_entropy_reg=proposal_entropy_reg
         )
         if enable_cuda:
@@ -360,18 +361,22 @@ if __name__ == '__main__':
     parser.add_argument('--batch-size', type=int, default=128)
     parser.add_argument('--seed', type=int, help='optional')
     parser.add_argument('--term-entropy-reg', type=float, default=0.05)
+    parser.add_argument('--utterance-entropy-reg', type=float, default=0.001)
     parser.add_argument('--proposal-entropy-reg', type=float, default=0.05)
     parser.add_argument('--disable-proposal', action='store_true')
     parser.add_argument('--disable-comms', action='store_true')
     parser.add_argument('--disable-prosocial', action='store_true')
     parser.add_argument('--enable-cuda', action='store_true')
-    parser.add_argument('--logfile', type=str, default='logs/log_%Y%m%d_%H%M%S.log')
+    parser.add_argument('--name', type=str, default='', help='used for logfile naming')
+    parser.add_argument('--logfile', type=str, default='logs/log_%Y%m%d_%H%M%S{name}.log')
     args = parser.parse_args()
     args.enable_comms = not args.disable_comms
     args.enable_proposal = not args.disable_proposal
     args.prosocial = not args.disable_prosocial
+    args.logfile = args.logfile.format(**args.__dict__)
     args.logfile = datetime.datetime.strftime(datetime.datetime.now(), args.logfile)
     del args.__dict__['disable_comms']
     del args.__dict__['disable_proposal']
     del args.__dict__['disable_prosocial']
+    del args.__dict__['name']
     run(**args.__dict__)

@@ -281,6 +281,8 @@ speed at this point, after convergence, ie avg steps/game ~4.2:
 - g3.4xlarge: ~880 games/sec
 - v100: ~1380 games/sec (using cuda9 branch, https://github.com/ASAPPinc/emergent_comms_negotiation/tree/cuda9 , ~~not very tested...~~ but reward-curve flat-lined, after ~1 hour; going to abandon this branch for now)
 
+gpu, no comms, logfile: logs/log_20171104_144936.log
+
 Looking at the reward curves, looks like they're plateau'ing. Possible next approaches:
 - add utterances?
 - re-check the paper, and compare with their no-comms results?

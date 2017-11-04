@@ -70,18 +70,31 @@ class UtterancePolicy(nn.Module):
         )
         self.h1 = nn.Linear(embedding_size, num_tokens)
 
+    # def cuda(self):
+    #     print('utterancepolkcy.cuda()')
+    #     res = super().cuda()
+    #     self.onehot = self.onehot.cuda()
+    #     return res
+
     def forward(self, h_t):
         batch_size = h_t.size()[0]
 
+        type_constr = torch.cuda if h_t.is_cuda else torch
+        if h_t.is_cuda:
+            self.onehot = self.onehot.cuda()
         state = (
             h_t.view(1, batch_size, self.embedding_size),
-            Variable(torch.zeros(1, batch_size, self.embedding_size))
+            Variable(type_constr.FloatTensor(1, batch_size, self.embedding_size).fill_(0))
         )
+        # print('type(self.onehot)', type(self.onehot))
+        # a = self.cuda()
+        # print('type(a.onehot)', type(a.onehot))
 
         # use first token as the initial dummy token
-        last_token = torch.zeros(batch_size).long()
+        # last_token = torch.zeros(batch_size).long()
+        last_token = type_constr.LongTensor(batch_size).fill_(0)
         utterance_nodes = []
-        while len(tokens) < self.max_len:
+        while len(utterance_nodes) < self.max_len:
             token_onehot = self.onehot[last_token]
             token_onehot = token_onehot.view(1, batch_size, self.num_tokens)
             out, state = self.lstm(Variable(token_onehot), state)
@@ -134,10 +147,12 @@ class AgentModel(nn.Module):
     def __init__(
             self, enable_comms, enable_proposal,
             term_entropy_reg,
+            utterance_entropy_reg,
             proposal_entropy_reg,
             embedding_size=100):
         super().__init__()
         self.term_entropy_reg = term_entropy_reg
+        self.utterance_entropy_reg = utterance_entropy_reg
         self.proposal_entropy_reg = proposal_entropy_reg
         self.embedding_size = embedding_size
         self.enable_comms = enable_comms
@@ -152,6 +167,12 @@ class AgentModel(nn.Module):
         self.term_policy = TermPolicy()
         self.utterance_policy = UtterancePolicy()
         self.proposal_policy = ProposalPolicy()
+
+    # def cuda(self):
+    #     print('agentmode.cuda()')
+    #     res = super().cuda()
+    #     print('res', res)
+    #     return res
 
     def forward(self, pool, utility, m_prev, prev_proposal):
         batch_size = pool.size()[0]
@@ -177,8 +198,8 @@ class AgentModel(nn.Module):
         utterance = None
         if self.enable_comms:
             utterance_nodes, utterance, utterance_entropy = self.utterance_policy(h_t)
-            notes += utterance_nodes
-            # entropy_loss -= self.itterance_entropy_reg * utterance_entropy
+            nodes += utterance_nodes
+            entropy_loss -= self.utterance_entropy_reg * utterance_entropy
         else:
             utterance = type_constr.LongTensor(batch_size, 6).zero_()  # hard-coding 6 here is a bit hacky...
 
