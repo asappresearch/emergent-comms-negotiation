@@ -83,6 +83,50 @@ class State(object):
         self.m_prev = self.m_prev[still_alive_idxes]
 
 
+def calc_rewards(t, prosocial, s, term, agent, alive_games):
+    # calcualate rewards for any that just finished
+
+    batch_size = term.size()[0]
+    utility = s.utilities[:, agent]
+    reward_eligible_mask = term.view(batch_size).clone().byte()
+    if t == 0:
+        # on first timestep theres no actual proposal yet, so score zero if terminate
+        reward_eligible_mask.fill_(0)
+    if reward_eligible_mask.max() > 0:
+        exceeded_pool, _ = ((s.last_proposal - s.pool) > 0).max(1)
+        if exceeded_pool.max() > 0:
+            reward_eligible_mask[exceeded_pool.nonzero().long().view(-1)] = 0
+
+    if reward_eligible_mask.max() > 0:
+        proposer = 1 - agent
+        accepter = agent
+        proposal = torch.zeros(batch_size, 2, 3).long()
+        proposal[:, proposer] = s.last_proposal
+        proposal[:, accepter] = s.pool - s.last_proposal
+        max_utility, _ = s.utilities.max(1)
+
+        reward_eligible_idxes = reward_eligible_mask.nonzero().long().view(-1)
+        for b in reward_eligible_idxes:
+            rewards = [0, 0]
+            for i in range(2):
+                rewards[i] = s.utilities[b, i].cpu().dot(proposal[b, i].cpu())
+
+            if prosocial:
+                total_actual_reward = np.sum(rewards)
+                total_possible_reward = max_utility[b].cpu().dot(s.pool[b].cpu())
+                scaled_reward = 0
+                if total_possible_reward != 0:
+                    scaled_reward = total_actual_reward / total_possible_reward
+                rewards = [scaled_reward, scaled_reward]
+            else:
+                for i in range(2):
+                    max_possible = s.utilities[b, i].cpu().dot(s.pool.cpu())
+                    if max_possible != 0:
+                        rewards[i] /= max_possible
+
+            alive_games[b]['rewards'] = rewards
+
+
 def run_episode(
         enable_cuda,
         enable_comms,
@@ -123,14 +167,7 @@ def run_episode(
             prev_proposal=Variable(s.last_proposal)
         )
         entropy_loss_by_agent[agent] += _entropy_loss
-
-        actions_t = []
-        actions_t.append(term_node)
-        if enable_comms:
-            actions_t += utterance_nodes
-        if enable_proposal:
-            actions_t += proposal_nodes
-        actions_by_timestep.append(actions_t)
+        actions_by_timestep.append([term_node] + utterance_nodes + proposal_nodes)
 
         if render and b_0_present:
             render_action(
@@ -141,44 +178,14 @@ def run_episode(
                 proposal_nodes=proposal_nodes
             )
 
-        # calcualate rewards for any that just finished
-        reward_eligible_mask = term_node.data.view(batch_size).clone().byte()
-        if t == 0:
-            # on first timestep theres no actual proposal yet, so score zero if terminate
-            reward_eligible_mask.fill_(0)
-        if reward_eligible_mask.max() > 0:
-            exceeded_pool, _ = ((s.last_proposal - s.pool) > 0).max(1)
-            if exceeded_pool.max() > 0:
-                reward_eligible_mask[exceeded_pool.nonzero().long().view(-1)] = 0
-
-        if reward_eligible_mask.max() > 0:
-            proposer = 1 - agent
-            accepter = agent
-            proposal = torch.zeros(batch_size, 2, 3).long()
-            proposal[:, proposer] = s.last_proposal
-            proposal[:, accepter] = s.pool - s.last_proposal
-            max_utility, _ = s.utilities.max(1)
-
-            reward_eligible_idxes = reward_eligible_mask.nonzero().long().view(-1)
-            for b in reward_eligible_idxes:
-                rewards = [0, 0]
-                for i in range(2):
-                    rewards[i] = s.utilities[b, i].cpu().dot(proposal[b, i].cpu())
-
-                if prosocial:
-                    total_actual_reward = np.sum(rewards)
-                    total_possible_reward = max_utility[b].cpu().dot(s.pool[b].cpu())
-                    scaled_reward = 0
-                    if total_possible_reward != 0:
-                        scaled_reward = total_actual_reward / total_possible_reward
-                    rewards = [scaled_reward, scaled_reward]
-                else:
-                    for i in range(2):
-                        max_possible = s.utilities[b, i].cpu().dot(s.pool.cpu())
-                        if max_possible != 0:
-                            rewards[i] /= max_possible
-
-                alive_games[b]['rewards'] = rewards
+        calc_rewards(
+            t=t,
+            s=s,
+            prosocial=prosocial,
+            agent=agent,
+            alive_games=alive_games,
+            term=term_node.data
+        )
 
         still_alive_mask = 1 - term_node.data.view(batch_size).clone().byte()
         # to think about off-by-one stuff, so let's say N is 3
