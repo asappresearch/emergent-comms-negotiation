@@ -91,7 +91,8 @@ def calc_rewards(t, prosocial, s, term, agent):
 
     batch_size = term.size()[0]
     utility = s.utilities[:, agent]
-    rewards_batch = torch.FloatTensor(batch_size, 2).fill_(0)
+    type_constr = torch.cuda if s.pool.is_cuda else torch
+    rewards_batch = type_constr.FloatTensor(batch_size, 2).fill_(0)
     if t == 0:
         # on first timestep theres no actual proposal yet, so score zero if terminate
         return rewards_batch
@@ -153,7 +154,7 @@ def run_episode(
     if enable_cuda:
         s.cuda()
 
-    sieve = alive_sieve.AliveSieve(batch_size=batch_size)
+    sieve = alive_sieve.AliveSieve(batch_size=batch_size, enable_cuda=enable_cuda)
     actions_by_timestep = []
     alive_masks = []
 
@@ -197,10 +198,11 @@ def run_episode(
             agent=agent,
             term=term_a
         )
-        # print('sieve.out_idxes', sieve.out_idxes)
-        # print('new_rewards', new_rewards)
+        # print('rewards[:5]', rewards[:5])
+        # print('new_rewards[:5]', new_rewards[:5])
         rewards[sieve.out_idxes] = new_rewards
 
+        # print('term_a', term_a)
         sieve.mark_dead(term_a)
         sieve.mark_dead(t + 1 >= s.N)
         alive_masks.append(sieve.alive_mask.clone())
@@ -279,8 +281,8 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
         for i in range(2):
             agent_opts[i].zero_grad()
         nodes_by_agent = [[], []]
-        rewards_mean = rewards.mean()
-        rewards_sum = rewards.sum(0)
+        # rewards_mean = rewards.mean()
+        # rewards_sum = rewards.sum(0)
         alive_rewards = rewards - baseline
         T = len(actions)
         for t in range(T):
@@ -299,9 +301,9 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
                 autograd.backward([entropy_loss_by_agent[i]] + nodes_by_agent[i], [None] + len(nodes_by_agent[i]) * [None])
                 agent_opts[i].step()
 
-        rewards_sum += rewards_sum.cpu()
+        rewards_sum += rewards.sum(0).cpu()
         steps_sum += steps.sum()
-        baseline = 0.7 * baseline + 0.3 * rewards_mean
+        baseline = 0.7 * baseline + 0.3 * rewards.mean()
         count_sum += batch_size
 
         if render:

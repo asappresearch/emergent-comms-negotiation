@@ -52,7 +52,7 @@ class TermPolicy(nn.Module):
         out_node = torch.bernoulli(x)
         x = x + eps
         entropy = - (x * x.log()).sum(1).sum()
-        return out_node, out_node.data, entropy
+        return out_node, out_node.data.byte(), entropy
 
 
 class UtterancePolicy(nn.Module):

@@ -5,12 +5,14 @@ import torch
 
 
 class AliveSieve(object):
-    def __init__(self, batch_size):
+    def __init__(self, batch_size, enable_cuda):
         """
         assume all alive to start with, with given batch_size
         """
         self.batch_size = batch_size
-        self.alive_mask = torch.ByteTensor(batch_size).fill_(1)
+        self.enable_cuda = enable_cuda
+        self.type_constr = torch.cuda if enable_cuda else torch
+        self.alive_mask = self.type_constr.ByteTensor(batch_size).fill_(1)
         self.alive_idxes = self.mask_to_idxes(self.alive_mask)
         """
         out_idxes are the indexes of the current members of alivesieve, in the original batch
@@ -21,7 +23,11 @@ class AliveSieve(object):
 
     @staticmethod
     def mask_to_idxes(mask):
-        return mask.nonzero().long().view(-1)
+        # mask = mask.byte()
+        # print('type(mask)', type(mask))
+        # print('mask.nonzero()', mask.nonzero())
+        # print('mask.nonzero().long()', mask.nonzero().long())
+        return mask.view(-1).nonzero().long().view(-1)
 
     def mark_dead(self, dead_mask):
         """
@@ -34,6 +40,8 @@ class AliveSieve(object):
         if dead_mask.max() == 0:
             return
         dead_idxes = self.mask_to_idxes(dead_mask)
+        # print('dead_mask', dead_mask)
+        # print('dead_idxes', dead_idxes)
         self.alive_mask[dead_idxes] = 0
         self.alive_idxes = self.mask_to_idxes(self.alive_mask)
 
@@ -69,7 +77,7 @@ class AliveSieve(object):
         # print('self.out_idxes', self.out_idxes)
 
         self.batch_size = self.alive_mask.int().sum()
-        self.alive_mask = torch.ByteTensor(self.batch_size).fill_(1)
+        self.alive_mask = self.type_constr.ByteTensor(self.batch_size).fill_(1)
         self.alive_idxes = self.mask_to_idxes(self.alive_mask)
 
     def sieve_tensor(self, t):
