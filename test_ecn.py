@@ -284,3 +284,34 @@ def test_single_game_term_exceeds_withinpool2():
     alive_games = [{'rewards': [0.0, 0.0]}]
     ecn.calc_rewards(s=s, t=t, prosocial=prosocial, alive_games=alive_games, agent=agent, term=term)
     assert alive_games[0]['rewards'] == [ratio, ratio]
+
+
+def test_single_game_term_t2():
+    t = 2
+    prosocial = True
+    batch_size = 1
+    torch.manual_seed(123)
+    np.random.seed(123)
+    s = ecn.State(batch_size=batch_size)
+
+    s.pool = torch.LongTensor([[3, 7, 2]])
+    s.utilities = torch.LongTensor([[[5,4,3], [3,4,5]]])
+    s.last_proposal = torch.LongTensor([[3, 0, 0]])
+
+    total_available = 3 * 5 + 7 * 4 + 2 * 5
+    print('total_available', total_available)
+    # so, the  proposer is the second agent, ie agent 1
+    # so, the proposer, agent 1, will take: 3 0 0
+    # accepter, agent 0, will take 0 7 2
+    actual = 0 * 5 + 7 * 4 + 2 * 3 + \
+            3 * 3
+    print('actual', actual)
+    ratio = actual / total_available
+    print('ratio', ratio)
+
+    agent = 0 if t  % 2 == 0 else 1
+    term = torch.ByteTensor([1])
+    # print('term', term)
+    alive_games = [{'rewards': [0, 0]}]
+    ecn.calc_rewards(s=s, t=t, prosocial=prosocial, alive_games=alive_games, agent=agent, term=term)
+    assert alive_games[0]['rewards'] == [ratio, ratio]
