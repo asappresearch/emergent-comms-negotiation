@@ -198,21 +198,16 @@ def run_episode(
             agent=agent,
             term=term_a
         )
-        # print('rewards[:5]', rewards[:5])
-        # print('new_rewards[:5]', new_rewards[:5])
         rewards[sieve.out_idxes] = new_rewards
+        s.last_proposal = this_proposal
 
-        # print('term_a', term_a)
         sieve.mark_dead(term_a)
         sieve.mark_dead(t + 1 >= s.N)
         alive_masks.append(sieve.alive_mask.clone())
-
         sieve.set_dead_global(num_steps, t + 1)
-
         if sieve.all_dead():
             break
 
-        s.last_proposal = this_proposal
         s.sieve_(sieve.alive_idxes)
         sieve.self_sieve_()
 
@@ -281,8 +276,6 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
         for i in range(2):
             agent_opts[i].zero_grad()
         nodes_by_agent = [[], []]
-        # rewards_mean = rewards.mean()
-        # rewards_sum = rewards.sum(0)
         alive_rewards = rewards - baseline
         T = len(actions)
         for t in range(T):
