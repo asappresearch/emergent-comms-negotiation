@@ -1,4 +1,5 @@
 todo:
+- check for correlation between utterances and utility?
 
 done:
 - add reward
