@@ -268,6 +268,10 @@ def test_single_game_term_t2_batch3():
     s.pool[0] = s.last_proposal[0]
     s.pool[2] = s.last_proposal[2]
 
+    # make rewards for 0 and 2 1.0
+    s.utilities[0][1] = torch.max(s.utilities[0], 0)[0].view(1, 3)
+    s.utilities[2][1] = torch.max(s.utilities[2], 0)[0].view(1, 3)
+
     total_available = 3 * 5 + 7 * 4 + 2 * 5
     print('total_available', total_available)
     # so, the  proposer is the second agent, ie agent 1
@@ -312,6 +316,10 @@ def test_single_game_term_t2_batch3_2term():
     s.pool[0] = s.last_proposal[0]
     s.pool[2] = s.last_proposal[2]
 
+    # make rewards for 0 and 2 1.0
+    s.utilities[0][1] = torch.max(s.utilities[0], 0)[0].view(1, 3)
+    s.utilities[2][1] = torch.max(s.utilities[2], 0)[0].view(1, 3)
+
     total_available = 3 * 5 + 7 * 4 + 2 * 5
     print('total_available', total_available)
     # so, the  proposer is the second agent, ie agent 1
@@ -330,7 +338,7 @@ def test_single_game_term_t2_batch3_2term():
     ecn.calc_rewards(s=s, t=t, prosocial=prosocial, alive_games=alive_games, agent=agent, term=term)
     assert alive_games[0]['rewards'] == [0.0, 0.0]
     assert alive_games[1]['rewards'] == [ratio, ratio]
-    assert alive_games[2]['rewards'] != [0.0, 0.0]
+    assert alive_games[2]['rewards'] == [1.0, 1.0]
 
 
 def test_single_game_term_t2_batch3_2termb():
@@ -355,6 +363,10 @@ def test_single_game_term_t2_batch3_2termb():
     s.pool[0] = s.last_proposal[0]
     s.pool[2] = s.last_proposal[2]
 
+    # make rewards for 0 and 2 1.0
+    s.utilities[0][1] = torch.max(s.utilities[0], 0)[0].view(1, 3)
+    s.utilities[2][1] = torch.max(s.utilities[2], 0)[0].view(1, 3)
+
     total_available = 3 * 5 + 7 * 4 + 2 * 5
     print('total_available', total_available)
     # so, the  proposer is the second agent, ie agent 1
@@ -371,7 +383,7 @@ def test_single_game_term_t2_batch3_2termb():
     for b in range(batch_size):
         alive_games.append({'rewards': [0.0, 0.0]})
     ecn.calc_rewards(s=s, t=t, prosocial=prosocial, alive_games=alive_games, agent=agent, term=term)
-    assert alive_games[0]['rewards'] != [0.0, 0.0]
+    assert alive_games[0]['rewards'] == [1.0, 1.0]
     assert alive_games[1]['rewards'] == [ratio, ratio]
     assert alive_games[2]['rewards'] == [0.0, 0.0]
 
@@ -399,6 +411,10 @@ def test_single_game_term_t2_batch3_3term():
     s.pool[0] = s.last_proposal[0]
     s.pool[2] = s.last_proposal[2]
 
+    # make rewards for 0 and 2 1.0
+    s.utilities[0][1] = torch.max(s.utilities[0], 0)[0].view(1, 3)
+    s.utilities[2][1] = torch.max(s.utilities[2], 0)[0].view(1, 3)
+
     total_available = 3 * 5 + 7 * 4 + 2 * 5
     print('total_available', total_available)
     # so, the  proposer is the second agent, ie agent 1
@@ -415,9 +431,9 @@ def test_single_game_term_t2_batch3_3term():
     for b in range(batch_size):
         alive_games.append({'rewards': [0.0, 0.0]})
     ecn.calc_rewards(s=s, t=t, prosocial=prosocial, alive_games=alive_games, agent=agent, term=term)
-    assert alive_games[0]['rewards'] != [0.0, 0.0]
+    assert alive_games[0]['rewards'] == [1.0, 1.0]
     assert alive_games[1]['rewards'] == [ratio, ratio]
-    assert alive_games[2]['rewards'] != [0.0, 0.0]
+    assert alive_games[2]['rewards'] == [1.0, 1.0]
 
 
 def test_single_game_term_t2_batch3_zero_term():
@@ -485,6 +501,10 @@ def test_single_game_term_t2_batch3_oneth_not_term():
     s.pool[0] = s.last_proposal[0]
     s.pool[2] = s.last_proposal[2]
 
+    # make rewards for 0 and 2 1.0
+    s.utilities[0][1] = torch.max(s.utilities[0], 0)[0].view(1, 3)
+    s.utilities[2][1] = torch.max(s.utilities[2], 0)[0].view(1, 3)
+
     total_available = 3 * 5 + 7 * 4 + 2 * 5
     print('total_available', total_available)
     # so, the  proposer is the second agent, ie agent 1
@@ -501,6 +521,6 @@ def test_single_game_term_t2_batch3_oneth_not_term():
     for b in range(batch_size):
         alive_games.append({'rewards': [0.0, 0.0]})
     ecn.calc_rewards(s=s, t=t, prosocial=prosocial, alive_games=alive_games, agent=agent, term=term)
-    assert alive_games[0]['rewards'] != [0.0, 0.0]
+    assert alive_games[0]['rewards'] == [1.0, 1.0]
     assert alive_games[1]['rewards'] == [0.0, 0.0]
-    assert alive_games[2]['rewards'] != [0.0, 0.0]
+    assert alive_games[2]['rewards'] == [1.0, 1.0]
