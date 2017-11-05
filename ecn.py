@@ -12,6 +12,7 @@ import torch.nn.functional as F
 
 import nets
 import sampling
+import alive_sieve
 
 
 def render_action(t, agent, s, prop, term):
@@ -83,28 +84,29 @@ class State(object):
         self.m_prev = self.m_prev[still_alive_idxes]
 
 
-def calc_rewards(t, prosocial, s, term, agent, alive_games):
+def calc_rewards(t, prosocial, s, term, agent):
     # calcualate rewards for any that just finished
 
     assert prosocial, 'not tested for not prosocial currently'
 
     batch_size = term.size()[0]
     utility = s.utilities[:, agent]
+    rewards_batch = torch.FloatTensor(batch_size, 2).fill_(0)
     if t == 0:
         # on first timestep theres no actual proposal yet, so score zero if terminate
-        return
+        return rewards_batch
 
     reward_eligible_mask = term.view(batch_size).clone().byte()
     if reward_eligible_mask.max() == 0:
         # if none of them accepted proposal, by terminating
-        return
+        return rewards_batch
 
     exceeded_pool, _ = ((s.last_proposal - s.pool) > 0).max(1)
     if exceeded_pool.max() > 0:
         reward_eligible_mask[exceeded_pool.nonzero().long().view(-1)] = 0
         if reward_eligible_mask.max() == 0:
             # all eligible ones exceeded pool
-            return
+            return rewards_batch
 
     proposer = 1 - agent
     accepter = agent
@@ -115,24 +117,26 @@ def calc_rewards(t, prosocial, s, term, agent, alive_games):
 
     reward_eligible_idxes = reward_eligible_mask.nonzero().long().view(-1)
     for b in reward_eligible_idxes:
-        rewards = [0, 0]
+        rewards = torch.FloatTensor(2).fill_(0)
         for i in range(2):
             rewards[i] = s.utilities[b, i].cpu().dot(proposal[b, i].cpu())
 
         if prosocial:
-            total_actual_reward = np.sum(rewards)
+            total_actual_reward = rewards.sum()
             total_possible_reward = max_utility[b].cpu().dot(s.pool[b].cpu())
             scaled_reward = 0
             if total_possible_reward != 0:
                 scaled_reward = total_actual_reward / total_possible_reward
-            rewards = [scaled_reward, scaled_reward]
+            rewards.fill_(scaled_reward)
         else:
             for i in range(2):
                 max_possible = s.utilities[b, i].cpu().dot(s.pool.cpu())
                 if max_possible != 0:
                     rewards[i] /= max_possible
 
-        alive_games[b]['rewards'] = rewards
+        # alive_games[b]['rewards'] = rewards
+        rewards_batch[b] = rewards
+    return rewards_batch
 
 
 def run_episode(
@@ -143,20 +147,21 @@ def run_episode(
         agent_models,
         batch_size,
         render=False):
-    s = State(batch_size=batch_size)
 
+    type_constr = torch.cuda if enable_cuda else torch
+    s = State(batch_size=batch_size)
     if enable_cuda:
         s.cuda()
 
-    games = []
+    sieve = alive_sieve.AliveSieve(batch_size=batch_size)
     actions_by_timestep = []
     alive_masks = []
-    for b in range(batch_size):
-        games.append({'rewards': [0, 0]})
-    alive_games = games.copy()
 
-    type_constr = torch.cuda if enable_cuda else torch
-    b_0_present = True  # is the first row of batch present? strictly for rendering purposes
+    # next two tensofrs wont be sieved, they will stay same size throughout
+    # entire batch, we will update them using sieve.out_idxes[...]
+    rewards = type_constr.FloatTensor(batch_size, 2).fill_(0)
+    num_steps = type_constr.LongTensor(batch_size).fill_(10)
+
     entropy_loss_by_agent = [
         Variable(type_constr.FloatTensor(1).fill_(0)),
         Variable(type_constr.FloatTensor(1).fill_(0))
@@ -165,7 +170,6 @@ def run_episode(
         print('  ')
     for t in range(10):
         agent = 0 if t % 2 == 0 else 1
-        batch_size = len(alive_games)
 
         agent_model = agent_models[agent]
         nodes, term_a, s.m_prev, this_proposal, _entropy_loss = agent_model(
@@ -177,7 +181,7 @@ def run_episode(
         entropy_loss_by_agent[agent] += _entropy_loss
         actions_by_timestep.append(nodes)
 
-        if render and b_0_present:
+        if render and sieve.out_idxes[0] == 0:
             render_action(
                 t=t,
                 agent=agent,
@@ -186,48 +190,35 @@ def run_episode(
                 prop=this_proposal
             )
 
-        calc_rewards(
+        new_rewards = calc_rewards(
             t=t,
             s=s,
             prosocial=prosocial,
             agent=agent,
-            alive_games=alive_games,
             term=term_a
         )
+        # print('sieve.out_idxes', sieve.out_idxes)
+        # print('new_rewards', new_rewards)
+        rewards[sieve.out_idxes] = new_rewards
 
-        still_alive_mask = 1 - term_a.view(batch_size).clone().byte()
-        finished_N = t + 1 >= s.N
-        if enable_cuda:
-            finished_N = finished_N.cuda()
-        still_alive_mask[finished_N] = 0
-        alive_masks.append(still_alive_mask)
+        sieve.mark_dead(term_a)
+        sieve.mark_dead(t + 1 >= s.N)
+        alive_masks.append(sieve.alive_mask.clone())
 
-        dead_idxes = (1 - still_alive_mask).nonzero().long().view(-1)
-        for b in dead_idxes:
-            alive_games[b]['steps'] = t + 1
+        sieve.set_dead_global(num_steps, t + 1)
 
-        if still_alive_mask.max() == 0:
+        if sieve.all_dead():
             break
-        if still_alive_mask[0] == 0:
-            b_0_present = False
 
-        still_alive_idxes = still_alive_mask.nonzero().long().view(-1)
-        if enable_cuda:
-            still_alive_idxes = still_alive_idxes.cuda()
-        # filter the state through the still alive mask:
         s.last_proposal = this_proposal
-        s.sieve_(still_alive_idxes)
-        alive_games = [alive_games[b] for b in still_alive_idxes]
-
-    for g in games:
-        if 'steps' not in g:
-            g['steps'] = 10
+        s.sieve_(sieve.alive_idxes)
+        sieve.self_sieve_()
 
     if render:
-        print('  r: %.2f' % np.mean(g['rewards']))
+        print('  r: %.2f' % rewards[0].mean())
         print('  ')
 
-    return actions_by_timestep, [g['rewards'] for g in games], [g['steps'] for g in games], alive_masks, entropy_loss_by_agent
+    return actions_by_timestep, rewards, num_steps, alive_masks, entropy_loss_by_agent
 
 
 def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, batch_size,
@@ -288,16 +279,9 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
         for i in range(2):
             agent_opts[i].zero_grad()
         nodes_by_agent = [[], []]
-        alive_rewards = torch.zeros(batch_size, 2)
-        all_rewards = torch.zeros(batch_size, 2)
-        for i in range(2):
-            # note to self: just use .clone() or something...
-            all_rewards[:, i] = torch.FloatTensor([r[i] for r in rewards])
-            alive_rewards[:, i] = torch.FloatTensor([r[i] for r in rewards])
-        if enable_cuda:
-            all_rewards = all_rewards.cuda()
-            alive_rewards = alive_rewards.cuda()
-        alive_rewards -= baseline
+        rewards_mean = rewards.mean()
+        rewards_sum = rewards.sum(0)
+        alive_rewards = rewards - baseline
         T = len(actions)
         for t in range(T):
             _batch_size = alive_rewards.size()[0]
@@ -315,9 +299,9 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
                 autograd.backward([entropy_loss_by_agent[i]] + nodes_by_agent[i], [None] + len(nodes_by_agent[i]) * [None])
                 agent_opts[i].step()
 
-        rewards_sum += all_rewards.sum(0).cpu()
-        steps_sum += np.sum(steps)
-        baseline = 0.7 * baseline + 0.3 * all_rewards.mean()
+        rewards_sum += rewards_sum.cpu()
+        steps_sum += steps.sum()
+        baseline = 0.7 * baseline + 0.3 * rewards_mean
         count_sum += batch_size
 
         if render:
