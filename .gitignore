@@ -101,3 +101,6 @@ ENV/
 .mypy_cache/
 model_saves/*
 
+merge.yaml
+merge.sh
+
