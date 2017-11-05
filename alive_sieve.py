@@ -23,10 +23,6 @@ class AliveSieve(object):
 
     @staticmethod
     def mask_to_idxes(mask):
-        # mask = mask.byte()
-        # print('type(mask)', type(mask))
-        # print('mask.nonzero()', mask.nonzero())
-        # print('mask.nonzero().long()', mask.nonzero().long())
         return mask.view(-1).nonzero().long().view(-1)
 
     def mark_dead(self, dead_mask):
@@ -34,14 +30,9 @@ class AliveSieve(object):
         sets the mask to 0 at relevant positions
         doesnt remove them yet, ie doesnt call 'sieve'
         """
-        # print('dead_mask', dead_mask)
-        # print('type(dead_mask)', type(dead_mask))
-        # print('dead_mask.size()', dead_mask.size())
         if dead_mask.max() == 0:
             return
         dead_idxes = self.mask_to_idxes(dead_mask)
-        # print('dead_mask', dead_mask)
-        # print('dead_idxes', dead_idxes)
         self.alive_mask[dead_idxes] = 0
         self.alive_idxes = self.mask_to_idxes(self.alive_mask)
 
@@ -62,7 +53,6 @@ class AliveSieve(object):
         So we're going to use out_idxes to index into this
         """
         dead_idxes = self.get_dead_idxes()
-        # print('dead_idxes', dead_idxes)
         if len(dead_idxes) == 0:
             return
         target[self.out_idxes[dead_idxes]] = v
@@ -74,7 +64,6 @@ class AliveSieve(object):
         recreating an all-1s mask
         """
         self.out_idxes = self.out_idxes[self.alive_idxes]
-        # print('self.out_idxes', self.out_idxes)
 
         self.batch_size = self.alive_mask.int().sum()
         self.alive_mask = self.type_constr.ByteTensor(self.batch_size).fill_(1)
