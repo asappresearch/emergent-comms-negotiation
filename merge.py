@@ -1,7 +1,7 @@
 """
 resyncs logs from server, then plots graph
 
-needs config file hosts.yaml
+needs config file merge.yaml
 """
 import argparse
 import yaml
