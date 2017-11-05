@@ -80,6 +80,7 @@ def test_rewards_t0():
     for game in alive_games:
         assert game['rewards'] == [0, 0]
 
+
 def test_rewards_t1():
     t = 1
     prosocial = True
@@ -99,6 +100,7 @@ def test_rewards_t1():
         assert game['rewards'] == [0, 0] or term[b] == 1
     # for game in alive_games:
         # assert game['rewards'] == [0, 0]
+
 
 def test_single_game_noterm():
     t = 1

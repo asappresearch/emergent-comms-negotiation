@@ -86,6 +86,8 @@ class State(object):
 def calc_rewards(t, prosocial, s, term, agent, alive_games):
     # calcualate rewards for any that just finished
 
+    assert prosocial, 'not tested for not prosocial currently'
+
     batch_size = term.size()[0]
     utility = s.utilities[:, agent]
     if t == 0:
