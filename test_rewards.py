@@ -12,7 +12,7 @@ def test_rewards_t0():
     s = ecn.State(batch_size=batch_size)
     agent = 0 if t  % 2 == 0 else 1
     term = torch.from_numpy(np.random.choice(2, batch_size)).long()
-    rewards = ecn.calc_rewards(s=s, t=t, prosocial=prosocial, agent=agent, term=term)
+    rewards = ecn.calc_rewards(s=s, t=t, prosocial=prosocial, term=term)
     assert rewards.size() == (batch_size, 2)
     assert rewards.abs().sum() == 0
 
@@ -26,7 +26,7 @@ def test_rewards_t1():
     s = ecn.State(batch_size=batch_size)
     agent = 0 if t  % 2 == 0 else 1
     term = torch.from_numpy(np.random.choice(2, batch_size)).long()
-    rewards = ecn.calc_rewards(s=s, t=t, prosocial=prosocial, agent=agent, term=term)
+    rewards = ecn.calc_rewards(s=s, t=t, prosocial=prosocial, term=term)
     # print('alive_games', alive_games)
     for b in range(batch_size):
         # game = alive_games[b]
@@ -42,7 +42,7 @@ def test_single_game_noterm():
     s = ecn.State(batch_size=batch_size)
     agent = 0 if t  % 2 == 0 else 1
     term = torch.ByteTensor([0])
-    rewards = ecn.calc_rewards(s=s, t=t, prosocial=prosocial, agent=agent, term=term)
+    rewards = ecn.calc_rewards(s=s, t=t, prosocial=prosocial, term=term)
     assert rewards[0].tolist() == [0, 0]
 
 
@@ -61,7 +61,7 @@ def test_single_game_term_ideal():
 
     agent = 0 if t  % 2 == 0 else 1
     term = torch.ByteTensor([1])
-    rewards = ecn.calc_rewards(s=s, t=t, prosocial=prosocial, agent=agent, term=term)
+    rewards = ecn.calc_rewards(s=s, t=t, prosocial=prosocial, term=term)
     assert rewards[0].tolist() == [1.0, 1.0]
 
 
@@ -80,7 +80,7 @@ def test_single_game_term_ideal2():
 
     agent = 0 if t  % 2 == 0 else 1
     term = torch.ByteTensor([1])
-    rewards = ecn.calc_rewards(s=s, t=t, prosocial=prosocial, agent=agent, term=term)
+    rewards = ecn.calc_rewards(s=s, t=t, prosocial=prosocial, term=term)
     assert rewards[0].tolist() == [1.0, 1.0]
 
 
@@ -99,7 +99,7 @@ def test_single_game_term_ideal3():
 
     agent = 0 if t  % 2 == 0 else 1
     term = torch.ByteTensor([1])
-    rewards = ecn.calc_rewards(s=s, t=t, prosocial=prosocial, agent=agent, term=term)
+    rewards = ecn.calc_rewards(s=s, t=t, prosocial=prosocial, term=term)
     assert rewards[0].tolist() == [1.0, 1.0]
 
 
@@ -125,7 +125,7 @@ def test_single_game_term_nonideal1():
 
     agent = 0 if t  % 2 == 0 else 1
     term = torch.ByteTensor([1])
-    rewards = ecn.calc_rewards(s=s, t=t, prosocial=prosocial, agent=agent, term=term)
+    rewards = ecn.calc_rewards(s=s, t=t, prosocial=prosocial, term=term)
     assert (rewards[0] - torch.FloatTensor([ratio, ratio])).abs().max() < 1e-4
 
 
@@ -144,7 +144,7 @@ def test_single_game_term_exceeds_pool():
 
     agent = 0 if t  % 2 == 0 else 1
     term = torch.ByteTensor([1])
-    rewards = ecn.calc_rewards(s=s, t=t, prosocial=prosocial, agent=agent, term=term)
+    rewards = ecn.calc_rewards(s=s, t=t, prosocial=prosocial, term=term)
     assert rewards[0].tolist() == [0, 0]
 
 
@@ -170,7 +170,7 @@ def test_single_game_term_exceeds_withinpool():
 
     agent = 0 if t  % 2 == 0 else 1
     term = torch.ByteTensor([1])
-    rewards = ecn.calc_rewards(s=s, t=t, prosocial=prosocial, agent=agent, term=term)
+    rewards = ecn.calc_rewards(s=s, t=t, prosocial=prosocial, term=term)
     assert (rewards[0] - torch.FloatTensor([ratio, ratio])).abs().max() < 1e-4
 
 
@@ -196,7 +196,7 @@ def test_single_game_term_exceeds_withinpool2():
 
     agent = 0 if t  % 2 == 0 else 1
     term = torch.ByteTensor([1])
-    rewards = ecn.calc_rewards(s=s, t=t, prosocial=prosocial, agent=agent, term=term)
+    rewards = ecn.calc_rewards(s=s, t=t, prosocial=prosocial, term=term)
     assert (rewards[0] - torch.FloatTensor([ratio, ratio])).abs().max() < 1e-4
 
 
@@ -225,7 +225,7 @@ def test_single_game_term_t2():
 
     agent = 0 if t  % 2 == 0 else 1
     term = torch.ByteTensor([1])
-    rewards = ecn.calc_rewards(s=s, t=t, prosocial=prosocial, agent=agent, term=term)
+    rewards = ecn.calc_rewards(s=s, t=t, prosocial=prosocial, term=term)
     assert (rewards[0] - torch.FloatTensor([ratio, ratio])).abs().max() < 1e-4
 
 
@@ -269,7 +269,7 @@ def test_single_game_term_t2_batch3():
     print('ratio', ratio)
 
     agent = 0 if t  % 2 == 0 else 1
-    rewards = ecn.calc_rewards(s=s, t=t, prosocial=prosocial, agent=agent, term=term)
+    rewards = ecn.calc_rewards(s=s, t=t, prosocial=prosocial, term=term)
     assert rewards[0].tolist() == [0.0, 0.0]
     assert (rewards[1] - torch.FloatTensor([ratio, ratio])).abs().max() < 1e-4
     assert rewards[2].tolist() == [0.0, 0.0]
@@ -314,7 +314,7 @@ def test_single_game_term_t2_batch3_2term():
     print('ratio', ratio)
 
     agent = 0 if t  % 2 == 0 else 1
-    rewards = ecn.calc_rewards(s=s, t=t, prosocial=prosocial, agent=agent, term=term)
+    rewards = ecn.calc_rewards(s=s, t=t, prosocial=prosocial, term=term)
     assert rewards[0].tolist() == [0.0, 0.0]
     assert (rewards[1] - torch.FloatTensor([ratio, ratio])).abs().max() < 1e-4
     assert rewards[2].tolist() == [1.0, 1.0]
@@ -358,7 +358,7 @@ def test_single_game_term_t2_batch3_2termb():
     print('ratio', ratio)
 
     agent = 0 if t  % 2 == 0 else 1
-    rewards = ecn.calc_rewards(s=s, t=t, prosocial=prosocial, agent=agent, term=term)
+    rewards = ecn.calc_rewards(s=s, t=t, prosocial=prosocial, term=term)
     assert rewards[0].tolist() == [1.0, 1.0]
     assert (rewards[1] - torch.FloatTensor([ratio, ratio])).abs().max() < 1e-4
     assert rewards[2].tolist() == [0.0, 0.0]
@@ -403,7 +403,7 @@ def test_single_game_term_t2_batch3_3term():
     print('ratio', ratio)
 
     agent = 0 if t  % 2 == 0 else 1
-    rewards = ecn.calc_rewards(s=s, t=t, prosocial=prosocial, agent=agent, term=term)
+    rewards = ecn.calc_rewards(s=s, t=t, prosocial=prosocial, term=term)
     assert rewards[0].tolist() == [1.0, 1.0]
     assert (rewards[1] - torch.FloatTensor([ratio, ratio])).abs().max() < 1e-4
     assert rewards[2].tolist() == [1.0, 1.0]
@@ -443,7 +443,7 @@ def test_single_game_term_t2_batch3_zero_term():
     print('ratio', ratio)
 
     agent = 0 if t  % 2 == 0 else 1
-    rewards = ecn.calc_rewards(s=s, t=t, prosocial=prosocial, agent=agent, term=term)
+    rewards = ecn.calc_rewards(s=s, t=t, prosocial=prosocial, term=term)
     assert rewards[0].tolist() == [0.0, 0.0]
     assert rewards[1].tolist() == [0.0, 0.0]
     assert rewards[2].tolist() == [0.0, 0.0]
@@ -487,7 +487,7 @@ def test_single_game_term_t2_batch3_oneth_not_term():
     print('ratio', ratio)
 
     agent = 0 if t  % 2 == 0 else 1
-    rewards = ecn.calc_rewards(s=s, t=t, prosocial=prosocial, agent=agent, term=term)
+    rewards = ecn.calc_rewards(s=s, t=t, prosocial=prosocial, term=term)
     assert rewards[0].tolist() == [1.0, 1.0]
     assert rewards[1].tolist() == [0.0, 0.0]
     assert rewards[2].tolist() == [1.0, 1.0]

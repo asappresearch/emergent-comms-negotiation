@@ -85,3 +85,25 @@ class AliveSieve(object):
         not returned)
         """
         return [alist[b] for b in self.alive_idxes]
+
+
+class SievePlayback(object):
+    """
+    Given a list of alive_masks, will loop through these, providing a tuple of
+    t, and the global idxes at each loop step
+    """
+    def __init__(self, alive_masks, enable_cuda):
+        self.alive_masks = alive_masks
+        self.type_constr = torch.cuda if enable_cuda else torch
+
+    def __iter__(self):
+        batch_size = self.alive_masks[0].size()[0]
+        global_idxes = self.type_constr.ByteTensor(batch_size).fill_(1).nonzero().long().view(-1)
+        T = len(self.alive_masks)
+        for t in range(T):
+            self.batch_size = len(global_idxes)
+            yield t, global_idxes
+            mask = self.alive_masks[t]
+            if mask.max() == 0:
+                return
+            global_idxes = global_idxes[mask.nonzero().long().view(-1)]

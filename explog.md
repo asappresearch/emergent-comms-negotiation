@@ -315,3 +315,9 @@ merge command:
 ```
 python merge.py --hostname gpu3 --logfile logs/log_20171105_220128.log --min-y 0.78 --max-y 0.81 --title 'Proposal, social, comms; run 2'
 ```
+
+nov 6 10:34 GMT, bit more factorization, using SievePlayback. Start new run, wtih comms on, using commandline:
+```
+python ecn.py --model-file model_saves/sieve2.dat --enable-cuda --name gpu4_sieve2
+```
+logfile logs/log_20171106_103440gpu4_sieve2.log

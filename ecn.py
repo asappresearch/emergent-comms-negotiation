@@ -15,7 +15,8 @@ import sampling
 import alive_sieve
 
 
-def render_action(t, agent, s, prop, term):
+def render_action(t, s, prop, term):
+    agent = t % 2
     speaker = 'A' if agent == 0 else 'B'
     utility = s.utilities[:, agent]
     print('  ', end='')
@@ -84,11 +85,12 @@ class State(object):
         self.m_prev = self.m_prev[still_alive_idxes]
 
 
-def calc_rewards(t, prosocial, s, term, agent):
+def calc_rewards(t, prosocial, s, term):
     # calcualate rewards for any that just finished
 
     assert prosocial, 'not tested for not prosocial currently'
 
+    agent = t % 2
     batch_size = term.size()[0]
     utility = s.utilities[:, agent]
     type_constr = torch.cuda if s.pool.is_cuda else torch
@@ -170,7 +172,7 @@ def run_episode(
     if render:
         print('  ')
     for t in range(10):
-        agent = 0 if t % 2 == 0 else 1
+        agent = t % 2
 
         agent_model = agent_models[agent]
         nodes, term_a, s.m_prev, this_proposal, _entropy_loss = agent_model(
@@ -185,7 +187,6 @@ def run_episode(
         if render and sieve.out_idxes[0] == 0:
             render_action(
                 t=t,
-                agent=agent,
                 s=s,
                 term=term_a,
                 prop=this_proposal
@@ -195,7 +196,6 @@ def run_episode(
             t=t,
             s=s,
             prosocial=prosocial,
-            agent=agent,
             term=term_a
         )
         rewards[sieve.out_idxes] = new_rewards
@@ -276,23 +276,18 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
         for i in range(2):
             agent_opts[i].zero_grad()
         nodes_by_agent = [[], []]
-        alive_rewards = rewards - baseline
-        T = len(actions)
-        for t in range(T):
-            _batch_size = alive_rewards.size()[0]
-            agent = 0 if t % 2 == 0 else 1
+        baselined_rewards = rewards - baseline
+        sieve_playback = alive_sieve.SievePlayback(alive_masks, enable_cuda=enable_cuda)
+        for t, global_idxes in sieve_playback:
+            agent = t % 2
             if len(actions[t]) > 0:
                 for action in actions[t]:
-                    action.reinforce(alive_rewards[:, agent].contiguous().view(_batch_size, 1))
-            nodes_by_agent[agent] += actions[t]
-            mask = alive_masks[t]
-            if mask.max() == 0:
-                break
-            alive_rewards = alive_rewards[mask.nonzero().long().view(-1)]
+                    action.reinforce(baselined_rewards[global_idxes][:, agent].contiguous().view(
+                        sieve_playback.batch_size, 1))
+                nodes_by_agent[agent] += actions[t]
         for i in range(2):
-            if len(nodes_by_agent[i]) > 0:
-                autograd.backward([entropy_loss_by_agent[i]] + nodes_by_agent[i], [None] + len(nodes_by_agent[i]) * [None])
-                agent_opts[i].step()
+            autograd.backward([entropy_loss_by_agent[i]] + nodes_by_agent[i], [None] + len(nodes_by_agent[i]) * [None])
+            agent_opts[i].step()
 
         rewards_sum += rewards.sum(0).cpu()
         steps_sum += steps.sum()
