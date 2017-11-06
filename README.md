@@ -52,3 +52,10 @@ One negotation is printed out every 3 seconds or so, using the training set; the
 ### proposal, comms, prosocial
 
 <img src="images/20171104_192343gpu2_proposal_social_comms_c.png?raw=true" width="800" />
+
+## Unit tests
+
+- install pytest, ie `conda install -y pytest`, and then:
+```
+py.test -svx
+```
