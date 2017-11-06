@@ -298,6 +298,10 @@ added utterances and entropy, training against d836149 using logfile logs/log_20
 ```
 python ecn.py --name gpu2 --enable-cuda --model-file model_saves/cuda_withcomms.dat
 ```
+merge command:
+```
+python merge.py --hostname gpu2 --logfile logs/log_20171104_192343gpu2.log --min-y 0.78 --max-y 0.81 --title 'Proposal, social, comms'
+```
 
 refactored a bit, in `alivesieve` branch, https://github.com/ASAPPinc/emergent_comms_negotiation/tree/alivesieve , testing in with-comms, with-proposal, prosocial mode, just in case changes the results compared to current `master` branch code
 
@@ -306,3 +310,8 @@ commandline:
 python ecn.py --model-file model_saves/sieve.dat --enable-cuda
 ```
 logfile logs/log_20171105_220128.log
+
+merge command:
+```
+python merge.py --hostname gpu3 --logfile logs/log_20171105_220128.log --min-y 0.78 --max-y 0.81 --title 'Proposal, social, comms; run 2'
+```
