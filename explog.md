@@ -300,3 +300,9 @@ python ecn.py --name gpu2 --enable-cuda --model-file model_saves/cuda_withcomms.
 ```
 
 refactored a bit, in `alivesieve` branch, https://github.com/ASAPPinc/emergent_comms_negotiation/tree/alivesieve , testing in with-comms, with-proposal, prosocial mode, just in case changes the results compared to current `master` branch code
+
+commandline:
+```
+python ecn.py --model-file model_saves/sieve.dat --enable-cuda
+```
+logfile logs/log_20171105_220128.log
