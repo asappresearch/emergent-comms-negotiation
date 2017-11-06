@@ -83,7 +83,7 @@ python merge.py --hostname [name in instances.yaml] [--logfile logs/log_20171104
 ```
 
 This will:
-- rsync the logs from the remote instance identified by `--hostname`
+- `rsync` the logs from the remote instance identified by `--hostname`
 - if `--logfile` is specified, load the results from that logfile
   - else, will look for the most recent logfile, ordered by name
 - plots the graph into `/tmp/out-reward.png`
