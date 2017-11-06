@@ -95,18 +95,18 @@ def test_playback():
     sieve.mark_dead(torch.ByteTensor([1,1]))
     alive_masks.append(sieve.alive_mask)
 
-    print('alive_masks', alive_masks)
+    # print('alive_masks', alive_masks)
 
     sieve = alive_sieve.SievePlayback(alive_masks, enable_cuda=False)
     ts = []
     global_idxes_s = []
     batch_sizes = []
     for t, global_idxes in sieve:
-        print('t', t)
-        print('global_idxes', global_idxes)
+        # print('t', t)
+        # print('global_idxes', global_idxes)
         ts.append(t)
         global_idxes_s.append(global_idxes)
-        print('sieve.batch_size', sieve.batch_size)
+        # print('sieve.batch_size', sieve.batch_size)
         batch_sizes.append(sieve.batch_size)
     assert len(ts) == 4
     assert ts[0] == 0
