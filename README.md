@@ -78,7 +78,8 @@ __Setup/configuration__:
 __Procedure__
 - run:
 ```
-python merge.py --hostname [name in instances.yaml] [--logfile logs/log_20171104_1234.log] [--title 'my graph title'] [--y-min 75 --y-max 85]
+python merge.py --hostname [name in instances.yaml] [--logfile logs/log_20171104_1234.log] \
+    [--title 'my graph title'] [--y-min 75 --y-max 85]
 ```
 
 This will:
