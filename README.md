@@ -59,3 +59,30 @@ One negotation is printed out every 3 seconds or so, using the training set; the
 ```
 py.test -svx
 ```
+
+## Plotting graphs
+
+__Assumptions__:
+- running the training on remote Ubuntu 16.04 instances
+  - `ssh` access, as user `ubuntu`, to these instances
+  - remote has home directory `/home/ubuntu`
+  - logs are stored in subdirectory `logs` of current local directory
+  - the location of `logs` relative to `~` is identical on local computer and remote computer
+
+__Setup/configuration__:
+- copy `instances.yaml.templ` to `~/instances.yaml`, on your own machine
+  - configure `~/instances.yaml` with:
+    - name and ip of each instance (names are arbitrary)
+    - the path to your private sshkey, that can access these instances
+
+__Procedure__
+- run:
+```
+python merge.py --hostname [name in instances.yaml] [--logfile logs/log_20171104_1234.log] [--title 'my graph title'] [--y-min 75 --y-max 85]
+```
+
+This will:
+- rsync the logs from the remote instance identified by `--hostname`
+- if `--logfile` is specified, load the results from that logfile
+  - else, will look for the most recent logfile, ordered by name
+- plots the graph into `/tmp/out-reward.png`
