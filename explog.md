@@ -320,4 +320,4 @@ nov 6 10:34 GMT, bit more factorization, using SievePlayback. Start new run, wti
 ```
 python ecn.py --model-file model_saves/sieve2.dat --enable-cuda --name gpu4_sieve2
 ```
-logfile logs/log_20171106_103440gpu4_sieve2.log
+logfile logs/log_20171106_103440gpu4_sieve2.log commit 1c5d4b2
