@@ -1,7 +1,7 @@
 """
 resyncs logs from server, then plots graph
 
-needs config file merge.yaml
+needs config file ~/instances.yaml
 """
 import argparse
 import yaml
@@ -12,7 +12,7 @@ import plot_graphs
 
 
 def run(hostname, logfile, **kwargs):
-    with open('merge.yaml', 'r') as f:
+    with open('~/instances.yaml'.replace('~', os.environ['HOME']), 'r') as f:
         config = yaml.load(f)
     ip_address = config['ip_by_name'][hostname]
     local_path = os.getcwd() + '/logs'
