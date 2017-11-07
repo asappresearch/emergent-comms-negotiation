@@ -285,6 +285,7 @@ gpu, no comms, logs/log_20171104_144936.log
 ```
 python ecn.py --model-file model_saves/cuda_nocomms_sument_c.dat --enable-cuda --disable-comms
 ```
+python merge.py --hostname gpu1 --logfile logs/log_20171104_144936.log --min-y 0.78 --max-y 0.81 --title 'Proposal, social, no comms'
 
 Looking at the reward curves, looks like they're plateau'ing. Possible next approaches:
 - add utterances?
@@ -320,4 +321,7 @@ nov 6 10:34 GMT, bit more factorization, using SievePlayback. Start new run, wti
 ```
 python ecn.py --model-file model_saves/sieve2.dat --enable-cuda --name gpu4_sieve2
 ```
-logfile logs/log_20171106_103440gpu4_sieve2.log commit 1c5d4b2
+merge command:
+```
+python merge.py --hostname gpu3 --logfile logs/log_20171106_103440gpu4_sieve2.log --min-y 0.78 --max-y 0.81 --title 'Proposal, social, comms; run 3'
+```
