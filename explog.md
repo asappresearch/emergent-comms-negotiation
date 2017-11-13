@@ -334,3 +334,4 @@ Launch a training run:
 ```
 python ecn.py --model-file model_saves/v030.dat --name gpu1v030 --enable-cuda
 ```
+(launched at ~14:25 uk time)
