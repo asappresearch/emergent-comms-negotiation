@@ -10,18 +10,20 @@ import numpy as np
 def plot_reward(logfile, min_y, max_y, title, max_x):
     epoch = []
     reward = []
-    with open(logfile, 'r') as f:
-        for n, line in enumerate(f):
-            if n == 0:
-                continue  # skip first line
-            line = line.strip()
-            if line == '':
-                continue
-            d = json.loads(line)
-            if max_x is not None and d['episode'] > max_x:
-                continue
-            epoch.append(int(d['episode']))
-            reward.append(float(d['avg_reward_0']))
+    logfiles = logfile
+    for logfile in logfiles.split(','):
+        with open(logfile, 'r') as f:
+            for n, line in enumerate(f):
+                if n == 0:
+                    continue  # skip first line
+                line = line.strip()
+                if line == '':
+                    continue
+                d = json.loads(line)
+                if max_x is not None and d['episode'] > max_x:
+                    continue
+                epoch.append(int(d['episode']))
+                reward.append(float(d['avg_reward_0']))
     while len(epoch) > 200:
         new_epoch = []
         new_reward = []
