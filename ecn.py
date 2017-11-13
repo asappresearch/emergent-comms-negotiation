@@ -23,7 +23,7 @@ def render_action(t, s, prop, term):
     if speaker == 'B':
         print('                                   ', end='')
     if term[0][0]:
-        print(' ACC' )
+        print(' ACC')
     else:
         print(' ' + ''.join([str(v) for v in s.m_prev[0].view(-1).tolist()]), end='')
         print(' %s:%s/%s %s:%s/%s %s:%s/%s' % (
@@ -44,8 +44,9 @@ def save_model(model_file, agent_models, agent_opts, start_time, episode):
         state['agent%s' % i]['opt_state'] = agent_opts[i].state_dict()
     state['episode'] = episode
     state['elapsed_time'] = time.time() - start_time
-    with open(model_file, 'wb') as f:
+    with open(model_file + '.tmp', 'wb') as f:
         torch.save(state, f)
+    os.rename(model_file + '.tmp', model_file)
 
 
 def load_model(model_file, agent_models, agent_opts):
@@ -263,7 +264,7 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
     last_save = time.time()
     baseline = 0
     while True:
-        render = time.time() - last_print >= 3.0
+        render = time.time() - last_print >= 30.0
         # render = True
         actions, rewards, steps, alive_masks, entropy_loss_by_agent = run_episode(
             enable_cuda=enable_cuda,
