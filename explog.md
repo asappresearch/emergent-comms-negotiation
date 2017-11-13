@@ -329,3 +329,8 @@ python merge.py --hostname gpu3 --logfile logs/log_20171106_103440gpu4_sieve2.lo
 2017 nov 13:
 - received reply to comments on openreview
 - changed utility values from `[0,1,..,10]` to `[0,1,..,5]`
+
+Launch a training run:
+```
+python ecn.py --model-file model_saves/v030.dat --name gpu1v030 --enable-cuda
+```
