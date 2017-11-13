@@ -335,3 +335,8 @@ Launch a training run:
 python ecn.py --model-file model_saves/v030.dat --name gpu1v030 --enable-cuda
 ```
 (launched at ~14:25 uk time)
+
+merge command:
+```
+python merge.py --hostname gpu1 --logfile logs/log_20171113_142411gpu1v030.log
+```
