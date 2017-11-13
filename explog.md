@@ -338,5 +338,5 @@ python ecn.py --model-file model_saves/v030.dat --name gpu1v030 --enable-cuda
 
 merge command:
 ```
-python merge.py --hostname gpu1 --logfile logs/log_20171113_142411gpu1v030.log
+python merge.py --hostname gpu1 --logfile logs/log_20171113_142411gpu1v030.log,logs/log_20171113_181106gpu1v030.log
 ```
