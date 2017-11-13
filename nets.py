@@ -5,10 +5,15 @@ import torch.nn.functional as F
 
 
 class NumberSequenceEncoder(nn.Module):
-    def __init__(self, embedding_size=100):
+    def __init__(self, num_values, embedding_size=100):
+        """
+        eg for values 0,1,2,3,4,5, num_values will be: 6
+        for 0,1,..,9 num_values will be: 10
+        """
         super().__init__()
         self.embedding_size = embedding_size
-        self.embedding = nn.Embedding(11, embedding_size)
+        self.num_values = num_values
+        self.embedding = nn.Embedding(num_values, embedding_size)
         self.lstm = nn.LSTMCell(
             input_size=embedding_size,
             hidden_size=embedding_size)
@@ -141,9 +146,9 @@ class AgentModel(nn.Module):
         self.embedding_size = embedding_size
         self.enable_comms = enable_comms
         self.enable_proposal = enable_proposal
-        self.context_net = NumberSequenceEncoder()
-        self.utterance_net = NumberSequenceEncoder()
-        self.proposal_net = NumberSequenceEncoder()
+        self.context_net = NumberSequenceEncoder(num_values=6)
+        self.utterance_net = NumberSequenceEncoder(num_values=10)
+        self.proposal_net = NumberSequenceEncoder(num_values=6)
         self.proposal_net.embedding = self.context_net.embedding
 
         self.combined_net = CombinedNet()

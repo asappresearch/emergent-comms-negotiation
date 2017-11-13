@@ -219,7 +219,8 @@ def run_episode(
 
 
 def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, batch_size,
-        term_entropy_reg, utterance_entropy_reg, proposal_entropy_reg, enable_cuda):
+        term_entropy_reg, utterance_entropy_reg, proposal_entropy_reg, enable_cuda,
+        no_load):
     if seed is not None:
         np.random.seed(seed)
         torch.manual_seed(seed)
@@ -239,7 +240,7 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
             model = model.cuda()
         agent_models.append(model)
         agent_opts.append(optim.Adam(params=agent_models[i].parameters()))
-    if path.isfile(model_file):
+    if path.isfile(model_file) and not no_load:
         episode, start_time = load_model(
             model_file=model_file,
             agent_models=agent_models,
@@ -343,6 +344,7 @@ if __name__ == '__main__':
     parser.add_argument('--disable-comms', action='store_true')
     parser.add_argument('--disable-prosocial', action='store_true')
     parser.add_argument('--enable-cuda', action='store_true')
+    parser.add_argument('--no-load', action='store_true')
     parser.add_argument('--name', type=str, default='', help='used for logfile naming')
     parser.add_argument('--logfile', type=str, default='logs/log_%Y%m%d_%H%M%S{name}.log')
     args = parser.parse_args()

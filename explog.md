@@ -325,3 +325,7 @@ merge command:
 ```
 python merge.py --hostname gpu3 --logfile logs/log_20171106_103440gpu4_sieve2.log --min-y 0.78 --max-y 0.81 --title 'Proposal, social, comms; run 3'
 ```
+
+2017 nov 13:
+- received reply to comments on openreview
+- changed utility values from `[0,1,..,10]` to `[0,1,..,5]`

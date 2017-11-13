@@ -10,7 +10,7 @@ def sample_items(batch_size):
 def sample_utility(batch_size):
     u = torch.zeros(3).long()
     while u.sum() == 0:
-        u = torch.from_numpy(np.random.choice(11, (batch_size, 3), replace=True))
+        u = torch.from_numpy(np.random.choice(6, (batch_size, 3), replace=True))
     return u
 
 
