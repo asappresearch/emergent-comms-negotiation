@@ -362,3 +362,21 @@ The proportions are:
 - proposal policy: 0.34
 
 Seems entropy not too small? (but maybe too large?)
+
+added `--testing` option, to disable training, and use the argmax insteda of stochstic draws. try it on gpu1 using:
+```
+python ecn.py --testing --enable-cuda --model-file model_saves/gpu2argmaxp.dat --name gpu1test
+```
+
+well, thats interseting. term policy never terminates, and all games run out of time :P
+```
+   287878 5:4/1 5:3/5 2:1/4
+                                      999999 1:4/1 4:5/5 2:5/4
+   287878 5:1/1 5:1/5 2:0/4
+                                      999999 1:4/1 4:2/5 2:2/4
+   287878 5:1/1 5:1/5 2:0/4
+  [out of time]
+  r: 0.00
+
+episode 133267 avg rewards 0.000 0.000 b=0.000 games/sec 1100 avg steps 6.8970 argmaxp term=1.0000 utt=1.0000 prop=1.0000
+```

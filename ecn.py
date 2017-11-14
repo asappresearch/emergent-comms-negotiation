@@ -150,7 +150,11 @@ def run_episode(
         prosocial,
         agent_models,
         batch_size,
+        testing,
         render=False):
+    """
+    turning testing on means, we disable stochasticity: always pick the argmax
+    """
 
     type_constr = torch.cuda if enable_cuda else torch
     s = State(batch_size=batch_size)
@@ -188,7 +192,8 @@ def run_episode(
             pool=Variable(s.pool),
             utility=Variable(s.utilities[:, agent]),
             m_prev=Variable(s.m_prev),
-            prev_proposal=Variable(s.last_proposal)
+            prev_proposal=Variable(s.last_proposal),
+            testing=testing
         )
         entropy_loss_by_agent[agent] += _entropy_loss
         actions_by_timestep.append(nodes)
@@ -237,7 +242,13 @@ def run_episode(
 
 def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, batch_size,
         term_entropy_reg, utterance_entropy_reg, proposal_entropy_reg, enable_cuda,
-        no_load):
+        no_load, testing):
+    """
+    testing option will:
+    - use argmax, ie disable stochastic draws
+    - not run optimizers
+    - not save model
+    """
     if seed is not None:
         np.random.seed(seed)
         torch.manual_seed(seed)
@@ -263,6 +274,11 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
             agent_models=agent_models,
             agent_opts=agent_opts)
         print('loaded model')
+    elif testing:
+        print('')
+        print('ERROR: must have loadable model to use --testing option')
+        print('')
+        return
     last_print = time.time()
     rewards_sum = torch.zeros(2)
     steps_sum = 0
@@ -297,7 +313,8 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
             agent_models=agent_models,
             prosocial=prosocial,
             batch_size=batch_size,
-            render=render)
+            render=render,
+            testing=testing)
         term_matches_argmax_count += _term_matches_argmax_count
         utt_matches_argmax_count += _utt_matches_argmax_count
         utt_stochastic_draws += _utt_stochastic_draws
@@ -305,21 +322,22 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
         prop_matches_argmax_count += _prop_matches_argmax_count
         prop_stochastic_draws += _prop_stochastic_draws
 
-        for i in range(2):
-            agent_opts[i].zero_grad()
-        nodes_by_agent = [[], []]
-        baselined_rewards = rewards - baseline
-        sieve_playback = alive_sieve.SievePlayback(alive_masks, enable_cuda=enable_cuda)
-        for t, global_idxes in sieve_playback:
-            agent = t % 2
-            if len(actions[t]) > 0:
-                for action in actions[t]:
-                    action.reinforce(baselined_rewards[global_idxes][:, agent].contiguous().view(
-                        sieve_playback.batch_size, 1))
-                nodes_by_agent[agent] += actions[t]
-        for i in range(2):
-            autograd.backward([entropy_loss_by_agent[i]] + nodes_by_agent[i], [None] + len(nodes_by_agent[i]) * [None])
-            agent_opts[i].step()
+        if not testing:
+            for i in range(2):
+                agent_opts[i].zero_grad()
+            nodes_by_agent = [[], []]
+            baselined_rewards = rewards - baseline
+            sieve_playback = alive_sieve.SievePlayback(alive_masks, enable_cuda=enable_cuda)
+            for t, global_idxes in sieve_playback:
+                agent = t % 2
+                if len(actions[t]) > 0:
+                    for action in actions[t]:
+                        action.reinforce(baselined_rewards[global_idxes][:, agent].contiguous().view(
+                            sieve_playback.batch_size, 1))
+                    nodes_by_agent[agent] += actions[t]
+            for i in range(2):
+                autograd.backward([entropy_loss_by_agent[i]] + nodes_by_agent[i], [None] + len(nodes_by_agent[i]) * [None])
+                agent_opts[i].step()
 
         rewards_sum += rewards.sum(0).cpu()
         steps_sum += steps.sum()
@@ -361,7 +379,7 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
             prop_matches_argmax_count = 0
             prop_stochastic_draws = 0
             count_sum = 0
-        if time.time() - last_save >= 30.0:
+        if not testing and time.time() - last_save >= 30.0:
             save_model(
                 model_file=model_file,
                 agent_models=agent_models,
@@ -386,6 +404,7 @@ if __name__ == '__main__':
     parser.add_argument('--disable-proposal', action='store_true')
     parser.add_argument('--disable-comms', action='store_true')
     parser.add_argument('--disable-prosocial', action='store_true')
+    parser.add_argument('--testing', action='store_true', help='turn off learning; always pick argmax')
     parser.add_argument('--enable-cuda', action='store_true')
     parser.add_argument('--no-load', action='store_true')
     parser.add_argument('--name', type=str, default='', help='used for logfile naming')
