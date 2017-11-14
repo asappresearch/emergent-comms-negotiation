@@ -11,11 +11,11 @@ from os import path
 import plot_graphs
 
 
-def run(hostname, logfile, **kwargs):
+def pull_models(hostname):
     with open('~/instances.yaml'.replace('~', os.environ['HOME']), 'r') as f:
         config = yaml.load(f)
     ip_address = config['ip_by_name'][hostname]
-    local_path = os.getcwd() + '/logs'
+    local_path = os.getcwd() + '/model_saves'
     remote_path = local_path.replace(os.environ['HOME'], '/home/ubuntu')
 
     # this is some hacky stuff for my own environment, it'll just get ignored for
@@ -35,19 +35,9 @@ def run(hostname, logfile, **kwargs):
     ]
     print(cmd_list)
     print(subprocess.check_output(cmd_list).decode('utf-8'))
-    if logfile is None:
-        files = os.listdir('logs')
-        logfile = 'logs/' + sorted(files)[-1]
-        print(logfile)
-    plot_graphs.plot_reward(logfile=logfile, **kwargs)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--hostname', type=str, help='should be in hosts.yaml', required=True)
-    parser.add_argument('--logfile', type=str)
-    parser.add_argument('--max-x', type=int)
-    parser.add_argument('--min-y', type=float)
-    parser.add_argument('--max-y', type=float)
-    parser.add_argument('--title', type=str)
     args = parser.parse_args()
-    run(**args.__dict__)
+    pull_models(**args.__dict__)
