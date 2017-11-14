@@ -456,3 +456,14 @@ episode 145448 avg rewards 0.880 0.880 b=0.882 games/sec 2104 avg steps 3.6910 a
 results better than training, but still some weirdness:
 - much lower than the paper (0.88 vs 0.95 or so)
 - utterances always identical, ignore the pool, utilities, and previous proposal :P
+
+rewritten nets to use non-pytorch proprietary expressions for reinforce bits, ie take logs etc, rather than calling `.reinforce`. Written some tests
+(nets_test.py) that show these actually learn, though they dont learn terribly well...
+
+fixed ecn.py for the new reinforce approach.
+
+Let's relaunch, on gpu2
+
+```
+python ecn.py --enable-cuda --name gpu2newreinf --model-file model_saves/gpu2newreinf.dat
+```
