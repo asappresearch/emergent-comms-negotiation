@@ -7,6 +7,8 @@ Reproduce https://openreview.net/forum?id=Hk6WhagRW&amp;noteId=Hk6WhagRW , "Emer
 - install pytorch 0.2, https://pytorch.org
 - download this repo, `git clone https://github.com/asappinc/emergent_comms_negotiation`
 
+note: master temporarily broken, you'll need to do `git checkout 649c51b966745ed` to avoid broken 'fix'. (I'm loathe to revert the fix, will just write forward soonish)
+
 ## To run
 
 CPU:
