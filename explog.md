@@ -467,3 +467,39 @@ Let's relaunch, on gpu2
 ```
 python ecn.py --enable-cuda --name gpu2newreinf --model-file model_saves/gpu2newreinf.dat
 ```
+
+after some episodes, reward in `--testing` is about ~0.04 better than training:
+```
+python ecn.py --testing --enable-cuda --name testing --model-file model_saves/gpu2newreinf.dat
+loaded model
+
+   111111 5:5/4 3:2/4 2:0/0
+                                      157777 2:1/4 0:0/4 4:4/0
+   011111 5:0/4 3:1/4 2:0/0
+                                      ACC
+  r: 0.34
+
+episode 789 avg rewards 0.741 0.741 b=0.755 games/sec 1602 avg steps 3.9976 argmaxp term=1.0000 utt=1.0000 prop=1.0000
+```
+
+compared with training:
+```
+saved model
+
+   694199 2:4/1 0:3/2 0:1/2
+                                      187853 4:5/1 4:3/2 5:3/2
+   401333 2:0/1 0:0/2 0:0/2
+                                      ACC
+  r: 1.00
+
+episode 1002 avg rewards 0.715 0.715 b=0.723 games/sec 553 avg steps 4.0791 argmaxp term=0.9993 utt=0.2212 prop=0.3453
+
+   433535 2:1/5 0:3/0 4:4/2
+                                      244519 1:0/5 0:2/0 5:5/2
+   333948 2:0/5 0:0/0 4:0/2
+                                      ACC
+  r: 0.75
+
+episode 1025 avg rewards 0.700 0.700 b=0.687 games/sec 559 avg steps 4.0781 argmaxp term=0.9994 utt=0.2183 prop=0.3428
+```
+looks like entropy on terminator policy might be fairly low? Lets leave to train for a while.
