@@ -91,7 +91,7 @@ class UtterancePolicy(nn.Module):
         batch_size = h_t.size()[0]
 
         type_constr = torch.cuda if h_t.is_cuda else torch
-        h =h_t
+        h = h_t
         c = Variable(type_constr.FloatTensor(batch_size, self.embedding_size).fill_(0))
 
         matches_argmax_count = 0
@@ -102,7 +102,7 @@ class UtterancePolicy(nn.Module):
         entropy = 0
         matches_argmax_count = 0
         stochastic_draws_count = 0
-        for i in range(6):
+        for i in range(self.max_len):
             embedded = self.embedding(Variable(last_token))
             h, c = self.lstm(embedded, (h, c))
             logits = self.h1(h)

@@ -503,3 +503,31 @@ episode 1002 avg rewards 0.715 0.715 b=0.723 games/sec 553 avg steps 4.0791 argm
 episode 1025 avg rewards 0.700 0.700 b=0.687 games/sec 559 avg steps 4.0781 argmaxp term=0.9994 utt=0.2183 prop=0.3428
 ```
 looks like entropy on terminator policy might be fairly low? Lets leave to train for a while.
+
+
+after a bit:
+```
+episode 7226 avg rewards 0.747 0.747 b=0.751 games/sec 636 avg steps 4.0165 argmaxp term=0.9997 utt=0.1945 prop=0.3344
+saved model
+
+   593874 5:3/3 4:1/4 0:3/1
+                                      407631 1:5/3 2:3/4 0:4/1
+   017314 5:1/3 4:1/4 0:0/1
+                                      ACC
+  r: 0.55
+
+episode 7252 avg rewards 0.755 0.755 b=0.757 games/sec 622 avg steps 4.0349 argmaxp term=0.9997 utt=0.2022 prop=0.3354
+
+   575323 3:0/2 5:4/5 5:1/5
+                                      403201 3:2/2 3:0/5 3:4/5
+   355839 3:0/2 5:1/5 5:1/5
+                                      ACC
+  r: 0.71
+
+episode 7276 avg rewards 0.744 0.744 b=0.740 games/sec 573 avg steps 4.0534 argmaxp term=0.9992 utt=0.1989 prop=0.3330
+```
+
+=> lets multiple term entropy by 100, see what happens. relaunch with
+```
+python ecn.py --enable-cuda --name gpu2newreinf --model-file model_saves/gpu2newreinf_termentreg5.dat --term-entropy-reg 5
+```
