@@ -380,3 +380,79 @@ well, thats interseting. term policy never terminates, and all games run out of 
 
 episode 133267 avg rewards 0.000 0.000 b=0.000 games/sec 1100 avg steps 6.8970 argmaxp term=1.0000 utt=1.0000 prop=1.0000
 ```
+
+also: look at the utterances: invariant with previous utterance, and previous proposal.
+
+Some possible hypotheses:
+- entropy is too high, preventing learning
+- some bug means terminator and utterance policy not learning
+- some bug means terminator and utterance policy are not being exposed correctly to previous utterance or proposal
+
+We can test the first hypothesis by using a lower entropy. Lets lower by 100 (which was causing local minima earlier, so should be lower enough; could also try 0 perhaps. Actually, let's just jump to zero...). Launch on gpu1:
+
+```
+python ecn.py --model-file model_saves/v030_gpu1_zero_ent.dat --name gpu1zeroent --enable-cuda --term-entropy-reg 0 --utterance-entropy-reg 0 --proposal-entropy-reg 0
+```
+
+and then occasionally sample with:
+```
+python ecn.py --testing --enable-cuda --model-file model_saves/v030_gpu1_zero_ent.dat --name gpu1test
+```
+
+same results: never terminates, avg reward 0.000, eg:
+```
+   803232 4:0/5 2:0/3 1:0/2
+                                      833333 0:5/5 4:0/3 1:1/2
+   803232 4:0/5 2:0/3 1:0/2
+                                      833333 0:5/5 4:0/3 1:1/2
+  [out of time]
+  r: 0.00
+
+episode 933 avg rewards 0.000 0.000 b=0.000 games/sec 929 avg steps 6.9050 argmaxp term=1.0000 utt=1.0000 prop=1.0000
+```
+(similar for earlier episodes). meanwhile training reward is ok:
+```
+   700707 2:0/0 2:0/1 1:0/4
+                                      ACC
+  r: 1.00
+
+episode 1456 avg rewards 0.718 0.718 b=0.710 games/sec 1269 avg steps 2.0012 argmaxp term=0.5003 utt=0.4429 prop=0.9939
+```
+
+after fixing bug with greedy term evaluation, results exactly match stochastic rewards, for zero entropy reg case:
+```
+
+   399999 3:0/1 2:0/5 4:0/2
+                                      ACC
+  r: 1.00
+
+episode 20054 avg rewards 0.713 0.713 b=0.718 games/sec 1241 avg steps 2.0000 argmaxp term=0.5000 utt=0.9491 prop=1.0000
+```
+
+for default entropy reg, results for `--testing` are:
+```
+$ python ecn.py --testing --enable-cuda --model-file model_saves/gpu2argmaxp.dat --name gpu1test
+...
+
+loaded model
+
+   859217 4:3/3 1:3/4 1:3/2
+                                      796049 0:5/3 5:5/4 3:5/2
+   149217 4:1/3 1:0/4 1:0/2
+                                      ACC
+  r: 0.79
+
+episode 145364 avg rewards 0.880 0.880 b=0.878 games/sec 1995 avg steps 3.6915 argmaxp term=1.0000 utt=1.0000 prop=1.0000
+
+   859217 1:3/0 3:3/2 3:3/5
+                                      796049 3:5/0 5:5/2 3:5/5
+   149217 1:0/0 3:1/2 3:1/5
+                                      ACC
+  r: 0.92
+
+episode 145448 avg rewards 0.880 0.880 b=0.882 games/sec 2104 avg steps 3.6910 argmaxp term=1.0000 utt=1.0000 prop=1.000
+```
+
+results better than training, but still some weirdness:
+- much lower than the paper (0.88 vs 0.95 or so)
+- utterances always identical, ignore the pool, utilities, and previous proposal :P

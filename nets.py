@@ -35,10 +35,10 @@ class NumberSequenceEncoder(nn.Module):
 
 
 class CombinedNet(nn.Module):
-    def __init__(self, embedding_size=100):
+    def __init__(self, num_sources=3, embedding_size=100):
         super().__init__()
         self.embedding_size = embedding_size
-        self.h1 = nn.Linear(embedding_size * 3, embedding_size)
+        self.h1 = nn.Linear(embedding_size * num_sources, embedding_size)
 
     def forward(self, x):
         x = self.h1(x)
@@ -51,23 +51,23 @@ class TermPolicy(nn.Module):
         super().__init__()
         self.h1 = nn.Linear(embedding_size, 1)
 
-    def forward(self, x, testing, eps=1e-8):
-        x = self.h1(x)
-        x = F.sigmoid(x)
+    def forward(self, thoughtvector, testing, eps=1e-8):
+        logits = self.h1(thoughtvector)
+        term_probs = F.sigmoid(logits)
         matches_argmax_count = 0
 
         if not testing:
-            out_node = torch.bernoulli(x)
+            out_node = torch.bernoulli(term_probs)
         else:
-            _, out_node = x.max(1)
-            out_node = out_node.view(-1, 1).float()
+            out_node = (term_probs >= 0.5).view(-1, 1).float()
 
-        _, argmax_res = x.data.max(1)
-        matches_argmax = argmax_res == out_node.data.long().view(-1)
-        matches_argmax_count = matches_argmax.int().sum()
-        x = x + eps
-        entropy = - (x * x.log()).sum(1).sum()
-        return out_node, out_node.data.byte(), entropy, matches_argmax_count
+        res_greedy = (term_probs.data >= 0.5).view(-1, 1).float()
+        # _, argmax_res = term_probs.data.max(1)
+        matches_greedy = res_greedy == out_node.data
+        matches_greedy_count = matches_greedy.int().sum()
+        term_probs = term_probs + eps
+        entropy = - (term_probs * term_probs.log()).sum(1).sum()
+        return term_probs, out_node, out_node.data.byte(), entropy, matches_greedy_count
 
 
 class UtterancePolicy(nn.Module):
@@ -212,7 +212,7 @@ class AgentModel(nn.Module):
         entropy_loss = 0
         nodes = []
 
-        term_node, term_a, entropy, term_matches_argmax_count = self.term_policy(h_t, testing=testing)
+        term_probs, term_node, term_a, entropy, term_matches_argmax_count = self.term_policy(h_t, testing=testing)
         nodes.append(term_node)
         entropy_loss -= entropy * self.term_entropy_reg
 
