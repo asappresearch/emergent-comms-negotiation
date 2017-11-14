@@ -56,18 +56,22 @@ class TermPolicy(nn.Module):
         term_probs = F.sigmoid(logits)
         matches_argmax_count = 0
 
-        if not testing:
-            out_node = torch.bernoulli(term_probs)
-        else:
-            out_node = (term_probs >= 0.5).view(-1, 1).float()
-
         res_greedy = (term_probs.data >= 0.5).view(-1, 1).float()
-        # _, argmax_res = term_probs.data.max(1)
-        matches_greedy = res_greedy == out_node.data
+
+        log_g = None
+        if not testing:
+            a = torch.bernoulli(term_probs)
+            g = a.detach() * term_probs + (1 - a.detach()) * (1 - term_probs)
+            log_g = g.log()
+            a = a.data
+        else:
+            a = res_greedy
+
+        matches_greedy = res_greedy == a
         matches_greedy_count = matches_greedy.int().sum()
         term_probs = term_probs + eps
         entropy = - (term_probs * term_probs.log()).sum(1).sum()
-        return term_probs, out_node, out_node.data.byte(), entropy, matches_greedy_count
+        return term_probs, log_g, a.byte(), entropy, matches_greedy_count
 
 
 class UtterancePolicy(nn.Module):

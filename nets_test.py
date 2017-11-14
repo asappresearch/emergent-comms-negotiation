@@ -79,12 +79,15 @@ def test_context(term_entropy_reg, embedding_size, num_values, batch_size):
     while True:
         pred_enc = proposalencoder(Variable(batch_X))
         combined = combiner(pred_enc)
-        term_probs, term_node, term_a, entropy, argmax_matches = term_policy(combined, testing=False)
+        term_probs, term_eligibility, term_a, entropy, argmax_matches = term_policy(combined, testing=False)
         reward = (term_a.view(-1) == batch_term).float()
 
         opt.zero_grad()
-        term_node.reinforce(reward.view(-1, 1) - baseline)
-        autograd.backward([term_node, - term_entropy_reg * entropy], [None, None])
+        reward_loss = - term_eligibility * Variable(reward.view(-1, 1))
+        reward_loss = reward_loss.sum()
+        ent_loss = - term_entropy_reg * entropy
+        loss = reward_loss + ent_loss
+        autograd.backward([loss], [None])
         opt.step()
 
         baseline = 0.7 * baseline + 0.3 * reward.mean()
