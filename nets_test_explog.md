@@ -177,9 +177,28 @@ episode 21600 letter acc 0.243 baseline 1.465 reward_greedy 0.246
 episode 21700 letter acc 0.251 baseline 1.487 reward_greedy 0.247
 episode 21800 letter acc 0.245 baseline 1.482 reward_greedy 0.249
 episode 21900 letter acc 0.249 baseline 1.491 reward_greedy 0.249
+
+episode 43200 letter acc 0.240 baseline 1.437 reward_greedy 0.240
+episode 43300 letter acc 0.240 baseline 1.437 reward_greedy 0.240
+episode 43400 letter acc 0.240 baseline 1.437 reward_greedy 0.240
+episode 43500 letter acc 0.240 baseline 1.437 reward_greedy 0.240
+episode 43600 letter acc 0.240 baseline 1.437 reward_greedy 0.240
+episode 43700 letter acc 0.240 baseline 1.437 reward_greedy 0.240
+episode 43800 letter acc 0.240 baseline 1.437 reward_greedy 0.240
+episode 43900 letter acc 0.240 baseline 1.437 reward_greedy 0.240
+episode 44000 letter acc 0.240 baseline 1.437 reward_greedy 0.240
+episode 44100 letter acc 0.240 baseline 1.437 reward_greedy 0.240
+episode 44200 letter acc 0.240 baseline 1.437 reward_greedy 0.240
+episode 44300 letter acc 0.240 baseline 1.437 reward_greedy 0.240
+episode 44400 letter acc 0.240 baseline 1.437 reward_greedy 0.240
+episode 44500 letter acc 0.240 baseline 1.437 reward_greedy 0.240
+episode 44600 letter acc 0.240 baseline 1.437 reward_greedy 0.240
+episode 44700 letter acc 0.240 baseline 1.437 reward_greedy 0.240
 ```
 
 => only 25% of letters correct
+
+killing it, since not improving
 
 proposal policy
 ---------------
@@ -232,6 +251,19 @@ episode 48300 propitemacc 0.409 baseline 1.227 reward_greedy 0.409
 episode 48400 propitemacc 0.409 baseline 1.227 reward_greedy 0.409
 episode 48500 propitemacc 0.409 baseline 1.227 reward_greedy 0.409
 episode 48600 propitemacc 0.409 baseline 1.227 reward_greedy 0.409
+
+episode 79000 propitemacc 0.396 baseline 1.187 reward_greedy 0.396
+episode 79100 propitemacc 0.396 baseline 1.187 reward_greedy 0.396
+episode 79200 propitemacc 0.396 baseline 1.187 reward_greedy 0.396
+episode 79300 propitemacc 0.396 baseline 1.187 reward_greedy 0.396
+episode 79400 propitemacc 0.396 baseline 1.187 reward_greedy 0.396
+episode 79500 propitemacc 0.396 baseline 1.187 reward_greedy 0.396
+episode 79600 propitemacc 0.396 baseline 1.187 reward_greedy 0.396
+episode 79700 propitemacc 0.396 baseline 1.187 reward_greedy 0.396
+episode 79800 propitemacc 0.396 baseline 1.187 reward_greedy 0.396
+episode 79900 propitemacc 0.396 baseline 1.187 reward_greedy 0.396
 ```
 
 => only 40% of proposal quantities correct
+
+killing it, since not improving
