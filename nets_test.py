@@ -61,22 +61,36 @@ def test_context():
     prop_K = len(train[0]['proposal'])
     num_episodes = 10000
     batch_X = torch.LongTensor(N, prop_K).fill_(0)
-    batch_term = torch.LongTensor(N).fill_(0)
+    batch_term = torch.ByteTensor(N).fill_(0)
     for n in range(N):
         batch_X[n] = torch.LongTensor(train[n]['proposal'])
         batch_term[n] = train[n]['term']
     print('batch_X', batch_X)
     print('batch_term', batch_term)
+    baseline = 0
     while True:
         pred_enc = proposalencoder(Variable(batch_X))
         combined = combiner(pred_enc)
         term_probs, term_node, term_a, entropy, argmax_matches = term_policy(combined, testing=False)
-        print('term_probs.data', term_probs.data)
-        print('term_node.data', term_node.data)
-        print('term_a', term_a)
-        print('entropy.data', entropy.data)
-        print('argmax_matches', argmax_matches)
-        asdf
+        reward = (term_a.view(-1) == batch_term).float()
+
+        opt.zero_grad()
+        term_node.reinforce(reward.view(-1, 1) - baseline)
+        autograd.backward([term_node], [None])
+        opt.step()
+
+        baseline = 0.7 * baseline + 0.3 * reward.mean()
+
+        # print('reward', reward)
+        # print('term_probs.data', term_probs.data)
+        # print('term_a', term_a)
+        # print('entropy.data', entropy.data[0])
+        # print('argmax_matches', argmax_matches)
+        # asdf
+        # print(term_a.view(-1) == batch_term)
+        num_right = (term_a.view(-1) == batch_term).int().sum()
+        if episode % 100 == 0:
+            print('episode', episode, 'num_right', num_right, 'baseline', baseline)
 
         episode += 1
         if episode >= num_episodes:
