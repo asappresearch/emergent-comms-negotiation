@@ -1,5 +1,8 @@
 todo:
+- add option to remove stochasticity, pick argmax, for testing
+- add train/test split
 - check for correlation between utterances and utility?
+- maybe break the problem down, and test each part standalone somehow?
 
 done:
 - add reward
@@ -22,3 +25,4 @@ done:
 - (cudaify)
 - enable cuda for utterances
 - add entropy regularization for utterances
+- add logging of proportion of stochastic draws matching argmax
