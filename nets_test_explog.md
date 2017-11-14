@@ -119,4 +119,46 @@ episode 600 num_right 108 baseline 0.8178750579159226 reward_val 0.90625
 episode 700 num_right 106 baseline 0.8314176415117113 reward_val 0.90625
 ```
 
+utteracne policy
+----------------
+
+using utterance entropy reg 0.001:
+```
+$ python nets_test.py test-utterance-policy
+episode 0 letter acc 0.085 baseline 0.152 reward_greedy 0.105
+episode 100 letter acc 0.108 baseline 0.636 reward_greedy 0.130
+episode 200 letter acc 0.134 baseline 0.771 reward_greedy 0.135
+episode 300 letter acc 0.145 baseline 0.857 reward_greedy 0.139
+episode 400 letter acc 0.158 baseline 0.871 reward_greedy 0.145
+episode 500 letter acc 0.150 baseline 0.876 reward_greedy 0.155
+episode 600 letter acc 0.147 baseline 0.888 reward_greedy 0.160
+episode 700 letter acc 0.154 baseline 0.947 reward_greedy 0.152
+episode 800 letter acc 0.163 baseline 0.981 reward_greedy 0.167
+episode 900 letter acc 0.165 baseline 0.996 reward_greedy 0.172
+episode 1000 letter acc 0.174 baseline 1.026 reward_greedy 0.172
+episode 1100 letter acc 0.172 baseline 1.055 reward_greedy 0.182
+episode 1200 letter acc 0.184 baseline 1.111 reward_greedy 0.193
+episode 1300 letter acc 0.190 baseline 1.123 reward_greedy 0.193
+episode 1400 letter acc 0.194 baseline 1.166 reward_greedy 0.201
+episode 1500 letter acc 0.201 baseline 1.205 reward_greedy 0.211
+episode 1600 letter acc 0.210 baseline 1.237 reward_greedy 0.208
+episode 1700 letter acc 0.206 baseline 1.214 reward_greedy 0.204
+episode 1800 letter acc 0.212 baseline 1.245 reward_greedy 0.208
+episode 1900 letter acc 0.212 baseline 1.261 reward_greedy 0.214
+episode 2000 letter acc 0.214 baseline 1.288 reward_greedy 0.220
+```
+
+start it running on gpu1:
+```
+python nets_test.py test-utterance-policy
+```
+
+(need to add logging and model save really...)
+
+(and cuda...)
+
+added cuda, relaunchgin on gpu1:
+```
+python nets_test.py test-utterance-policy --enable-cuda
+```
 

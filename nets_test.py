@@ -174,7 +174,7 @@ def test_proposal_policy(proposal_entropy_reg, embedding_size, num_values, batch
             break
 
 
-def test_utterance_policy(utterance_entropy_reg, embedding_size, num_values, batch_size):
+def test_utterance_policy(utterance_entropy_reg, embedding_size, num_values, batch_size, enable_cuda):
     """
     something similar to (now renamed) test_term_policy, but for utterance
     """
@@ -197,6 +197,10 @@ def test_utterance_policy(utterance_entropy_reg, embedding_size, num_values, bat
     proposalencoder = nets.NumberSequenceEncoder(num_values=num_values, embedding_size=embedding_size)
     combiner = nets.CombinedNet(num_sources=1, embedding_size=embedding_size)
     utterance_policy = nets.UtterancePolicy(embedding_size=embedding_size, num_tokens=vocab_size, max_len=utt_len)
+    if enable_cuda:
+        proposalencoder = proposalencoder.cuda()
+        combiner = combiner.cuda()
+        utterance_policy = utterance_policy.cuda()
 
     params = set(proposalencoder.parameters()) | set(combiner.parameters()) | set(utterance_policy.parameters())
     opt = optim.Adam(lr=0.001, params=params)
@@ -212,6 +216,9 @@ def test_utterance_policy(utterance_entropy_reg, embedding_size, num_values, bat
         batch_prev_prop[n] = torch.LongTensor(train[n]['prev_prop'])
         batch_this_utt[n] = train[n]['this_utt']
     baseline = 0
+    if enable_cuda:
+        batch_prev_prop = batch_prev_prop.cuda()
+        batch_this_utt = batch_this_utt.cuda()
     while True:
         pred_enc = proposalencoder(Variable(batch_prev_prop))
         combined = combiner(pred_enc)
@@ -267,6 +274,7 @@ if __name__ == '__main__':
     parser_.add_argument('--embedding-size', type=int, default=100)
     parser_.add_argument('--num-values', type=int, default=6)
     parser_.add_argument('--batch-size', type=int, default=128)
+    parser_.add_argument('--enable-cuda', action='store_true')
     parser_.set_defaults(func=test_utterance_policy)
 
     args = parser.parse_args()
