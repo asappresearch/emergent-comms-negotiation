@@ -26,7 +26,7 @@ import numpy as np
 import nets
 
 
-def test_context():
+def test_context(term_entropy_reg):
     """
     So, we will have two contexts:
     - previous proposal 0,0,0
@@ -76,18 +76,11 @@ def test_context():
 
         opt.zero_grad()
         term_node.reinforce(reward.view(-1, 1) - baseline)
-        autograd.backward([term_node], [None])
+        autograd.backward([term_node, - term_entropy_reg * entropy], [None, None])
         opt.step()
 
         baseline = 0.7 * baseline + 0.3 * reward.mean()
 
-        # print('reward', reward)
-        # print('term_probs.data', term_probs.data)
-        # print('term_a', term_a)
-        # print('entropy.data', entropy.data[0])
-        # print('argmax_matches', argmax_matches)
-        # asdf
-        # print(term_a.view(-1) == batch_term)
         num_right = (term_a.view(-1) == batch_term).int().sum()
         if episode % 100 == 0:
             print('episode', episode, 'num_right', num_right, 'baseline', baseline)
@@ -102,6 +95,7 @@ if __name__ == '__main__':
     parsers = parser.add_subparsers()
 
     parser_ = parsers.add_parser('test-context')
+    parser_.add_argument('--term-entropy-reg', type=float, default=0.05)
     parser_.set_defaults(func=test_context)
 
     args = parser.parse_args()
