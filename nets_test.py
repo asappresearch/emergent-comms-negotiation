@@ -24,9 +24,10 @@ import torch.nn.functional as F
 import numpy as np
 
 import nets
+import sampling
 
 
-def test_context(term_entropy_reg):
+def test_context(term_entropy_reg, embedding_size, num_values, batch_size):
     """
     So, we will have two contexts:
     - previous proposal 0,0,0
@@ -37,19 +38,28 @@ def test_context(term_entropy_reg):
 
     Then we will repeat with some other numbers
     """
-    train = [
-        {'proposal': [0,0,0], 'term': 0},
-        {'proposal': [3,3,3], 'term': 1}
-    ]
+    train = []
+    N = batch_size
+    seen_proposals = set()
+    for n in range(N):
+        seen = True
+        while seen:
+            proposal = sampling.sample_items(batch_size=1, num_values=num_values).view(-1)
+            hash = proposal[0] * 100 + proposal[1] * 10 + proposal[0]
+            seen = hash in seen_proposals
+            seen_proposals.add(seen)
+        term = np.random.choice(2, 1).item()
+        train.append({'proposal': proposal, 'term': term})
+
+
     """
     also, lets use a small embedding, say 20, for speed
     and lets have only 4 possible values
 
     note: we should alos try with cuda and not cuda
     """
-    embedding_size = 20
 
-    proposalencoder = nets.NumberSequenceEncoder(num_values=4, embedding_size=embedding_size)
+    proposalencoder = nets.NumberSequenceEncoder(num_values=num_values, embedding_size=embedding_size)
     combiner = nets.CombinedNet(num_sources=1, embedding_size=embedding_size)
     term_policy = nets.TermPolicy(embedding_size=embedding_size)
 
@@ -65,8 +75,6 @@ def test_context(term_entropy_reg):
     for n in range(N):
         batch_X[n] = torch.LongTensor(train[n]['proposal'])
         batch_term[n] = train[n]['term']
-    print('batch_X', batch_X)
-    print('batch_term', batch_term)
     baseline = 0
     while True:
         pred_enc = proposalencoder(Variable(batch_X))
@@ -83,7 +91,9 @@ def test_context(term_entropy_reg):
 
         num_right = (term_a.view(-1) == batch_term).int().sum()
         if episode % 100 == 0:
-            print('episode', episode, 'num_right', num_right, 'baseline', baseline)
+            term_probs, term_node, term_a, entropy, argmax_matches = term_policy(combined, testing=True)
+            reward_val = (term_a.view(-1) == batch_term).float()
+            print('episode', episode, 'num_right', num_right, 'baseline', baseline, 'reward_val', reward_val.float().mean())
 
         episode += 1
         if episode >= num_episodes:
@@ -96,6 +106,9 @@ if __name__ == '__main__':
 
     parser_ = parsers.add_parser('test-context')
     parser_.add_argument('--term-entropy-reg', type=float, default=0.05)
+    parser_.add_argument('--embedding-size', type=int, default=100)
+    parser_.add_argument('--num-values', type=int, default=6)
+    parser_.add_argument('--batch-size', type=int, default=128)
     parser_.set_defaults(func=test_context)
 
     args = parser.parse_args()
