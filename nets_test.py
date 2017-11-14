@@ -103,7 +103,7 @@ def test_term_policy(term_entropy_reg, embedding_size, num_values, batch_size):
             break
 
 
-def test_proposal_policy(proposal_entropy_reg, embedding_size, num_values, batch_size):
+def test_proposal_policy(proposal_entropy_reg, embedding_size, num_values, batch_size, enable_cuda):
     """
     something similar to (now renamed) test_term_policy, but for proposal
     """
@@ -119,20 +119,15 @@ def test_proposal_policy(proposal_entropy_reg, embedding_size, num_values, batch
             seen_proposals.add(seen)
         # doesnt matter if we've seen this_prop before, it's ok. many to one mapping ok
         this_prop = sampling.sample_items(batch_size=1, num_values=num_values).view(-1)
-        train.append({'prev_prop': prev_prop, 'this_prob': this_prop})
-
-
-    """
-    also, lets use a small embedding, say 20, for speed
-    and lets have only 4 possible values
-
-    note: we should alos try with cuda and not cuda
-    """
+        train.append({'prev_prop': prev_prop, 'this_prop': this_prop})
 
     proposalencoder = nets.NumberSequenceEncoder(num_values=num_values, embedding_size=embedding_size)
     combiner = nets.CombinedNet(num_sources=1, embedding_size=embedding_size)
-    # term_policy = nets.TermPolicy(embedding_size=embedding_size)
     proposal_policy = nets.ProposalPolicy(embedding_size=embedding_size, num_counts=num_values, num_items=3)
+    if enable_cuda:
+        proposalencoder = proposalencoder.cuda()
+        combiner = combiner.cuda()
+        proposal_policy = proposal_policy.cuda()
 
     params = set(proposalencoder.parameters()) | set(combiner.parameters()) | set(proposal_policy.parameters())
     opt = optim.Adam(lr=0.001, params=params)
@@ -140,38 +135,40 @@ def test_proposal_policy(proposal_entropy_reg, embedding_size, num_values, batch
     episode = 0
     N = len(train)
     prop_K = len(train[0]['this_prop'])
-    num_episodes = 10000
     batch_prev_prop = torch.LongTensor(N, prop_K).fill_(0)
-    batch_next_prop = torch.LongTensor(N, prop_K).fill_(0)
+    batch_this_prop = torch.LongTensor(N, prop_K).fill_(0)
     for n in range(N):
         batch_prev_prop[n] = torch.LongTensor(train[n]['prev_prop'])
-        batch_next_prop[n] = torch.LongTensor(train[n]['this_prop'])
+        batch_this_prop[n] = torch.LongTensor(train[n]['this_prop'])
     baseline = 0
+    if enable_cuda:
+        batch_prev_prop = batch_prev_prop.cuda()
+        batch_this_prop = batch_this_prop.cuda()
     while True:
         pred_enc = proposalencoder(Variable(batch_prev_prop))
         combined = combiner(pred_enc)
-        term_probs, term_eligibility, term_a, entropy, argmax_matches = proposal_policy(combined, testing=False)
-        reward = (term_a.view(-1) == batch_term).float()
+        proposal_nodes, proposal, entropy, matches_argmax_count, stochastic_draws_count = proposal_policy(combined, testing=False)
+        reward = (proposal == batch_this_prop).float().sum(1)
 
         opt.zero_grad()
-        reward_loss = - term_eligibility * Variable(reward.view(-1, 1))
+        reward_loss = 0
+        for elig in proposal_nodes:
+            reward_loss -= elig * Variable(reward.view(-1, 1))
         reward_loss = reward_loss.sum()
-        ent_loss = - term_entropy_reg * entropy
+        ent_loss = - proposal_entropy_reg * entropy
         loss = reward_loss + ent_loss
         autograd.backward([loss], [None])
         opt.step()
 
         baseline = 0.7 * baseline + 0.3 * reward.mean()
 
-        num_right = (term_a.view(-1) == batch_term).int().sum()
+        propitem_acc = (proposal == batch_this_prop).float().mean()
         if episode % 100 == 0:
-            term_probs, term_node, term_a, entropy, argmax_matches = proposal_policy(combined, testing=True)
-            reward_val = (term_a.view(-1) == batch_term).float()
-            print('episode', episode, 'num_right', num_right, 'baseline', baseline, 'reward_val', reward_val.float().mean())
+            proposal_nodes, proposal, entropy, matches_argmax_count, stochastic_draws_count = proposal_policy(combined, testing=True)
+            reward_val = (proposal == batch_this_prop).float()
+            print('episode', episode, 'propitemacc %.3f' % propitem_acc, 'baseline %.3f' % baseline, 'reward_greedy %.3f' % reward_val.float().mean())
 
         episode += 1
-        if episode >= num_episodes:
-            break
 
 
 def test_utterance_policy(utterance_entropy_reg, embedding_size, num_values, batch_size, enable_cuda):
@@ -209,7 +206,6 @@ def test_utterance_policy(utterance_entropy_reg, embedding_size, num_values, bat
     N = len(train)
     prop_K = len(train[0]['prev_prop'])
     utt_K = utt_len
-    num_episodes = 10000
     batch_prev_prop = torch.LongTensor(N, prop_K).fill_(0)
     batch_this_utt = torch.LongTensor(N, utt_K).fill_(0)
     for n in range(N):
@@ -224,7 +220,6 @@ def test_utterance_policy(utterance_entropy_reg, embedding_size, num_values, bat
         combined = combiner(pred_enc)
         utterance_nodes, utterance, entropy, matches_argmax_count, stochastic_draws_count = utterance_policy(combined, testing=False)
         reward = (utterance == batch_this_utt).float().sum(1)
-        # tot_poss = batch_size * utt_len
 
         opt.zero_grad()
         reward_loss = 0
@@ -246,8 +241,6 @@ def test_utterance_policy(utterance_entropy_reg, embedding_size, num_values, bat
             print('episode', episode, 'letter acc %.3f' % perletter_acc, 'baseline %.3f' % baseline, 'reward_greedy %.3f' % reward_val.float().mean())
 
         episode += 1
-        if episode >= num_episodes:
-            break
 
 
 if __name__ == '__main__':
@@ -261,13 +254,13 @@ if __name__ == '__main__':
     parser_.add_argument('--batch-size', type=int, default=128)
     parser_.set_defaults(func=test_term_policy)
 
-    # proposal polichy test not written/finished yet
-    # parser_ = parsers.add_parser('test-proposal-policy')
-    # parser_.add_argument('--proposal-entropy-reg', type=float, default=0.05)
-    # parser_.add_argument('--embedding-size', type=int, default=100)
-    # parser_.add_argument('--num-values', type=int, default=6)
-    # parser_.add_argument('--batch-size', type=int, default=128)
-    # parser_.set_defaults(func=test_proposal_policy)
+    parser_ = parsers.add_parser('test-proposal-policy')
+    parser_.add_argument('--proposal-entropy-reg', type=float, default=0.05)
+    parser_.add_argument('--embedding-size', type=int, default=100)
+    parser_.add_argument('--num-values', type=int, default=6)
+    parser_.add_argument('--batch-size', type=int, default=128)
+    parser_.add_argument('--enable-cuda', action='store_true')
+    parser_.set_defaults(func=test_proposal_policy)
 
     parser_ = parsers.add_parser('test-utterance-policy')
     parser_.add_argument('--utterance-entropy-reg', type=float, default=0.001)

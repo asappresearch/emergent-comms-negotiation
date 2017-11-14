@@ -155,23 +155,30 @@ class ProposalPolicy(nn.Module):
         stochastic_draws = 0
         proposal = type_constr.LongTensor(batch_size, self.num_items).fill_(0)
         for i in range(self.num_items):
-            x1 = self.fcs[i](x)
-            x2 = F.softmax(x1)
-            if not testing:
-                node = torch.multinomial(x2)
-            else:
-                _, node = x2.max(1)
-                node = node.view(-1, 1)
+            logits = self.fcs[i](x)
+            probs = F.softmax(logits)
 
-            _, argmax_res = x2.data.max(1)
-            matches_argmax = argmax_res == node.data.long().view(-1)
+            _, res_greedy = probs.data.max(1)
+            res_greedy = res_greedy.view(-1, 1).long()
+
+            log_g = None
+            if not testing:
+                a = torch.multinomial(probs)
+                g = torch.gather(probs, 1, Variable(a.data))
+                log_g = g.log()
+                a = a.data
+            else:
+                a = res_greedy
+
+            matches_argmax = res_greedy == a
             matches_argmax_count += matches_argmax.int().sum()
             stochastic_draws += batch_size
 
-            nodes.append(node)
-            x2 = x2 + eps
-            entropy += (- x2 * x2.log()).sum(1).sum()
-            proposal[:, i] = node.data
+            if log_g is not None:
+                nodes.append(log_g)
+            probs = probs + eps
+            entropy += (- probs * probs.log()).sum(1).sum()
+            proposal[:, i] = a
 
         return nodes, proposal, entropy, matches_argmax_count, stochastic_draws
 

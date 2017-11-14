@@ -162,3 +162,34 @@ added cuda, relaunchgin on gpu1:
 python nets_test.py test-utterance-policy --enable-cuda
 ```
 
+proposal policy
+---------------
+
+test added, try running:
+```
+$ python nets_test.py test-proposal-policy
+episode 0 propitemacc 0.182 baseline 0.164 reward_greedy 0.185
+episode 100 propitemacc 0.271 baseline 0.767 reward_greedy 0.299
+episode 200 propitemacc 0.349 baseline 1.068 reward_greedy 0.432
+episode 300 propitemacc 0.461 baseline 1.342 reward_greedy 0.497
+episode 400 propitemacc 0.521 baseline 1.503 reward_greedy 0.552
+episode 500 propitemacc 0.549 baseline 1.662 reward_greedy 0.604
+episode 600 propitemacc 0.599 baseline 1.765 reward_greedy 0.625
+episode 700 propitemacc 0.617 baseline 1.828 reward_greedy 0.643
+episode 800 propitemacc 0.630 baseline 1.913 reward_greedy 0.667
+episode 900 propitemacc 0.648 baseline 1.928 reward_greedy 0.661
+episode 1000 propitemacc 0.656 baseline 1.962 reward_greedy 0.669
+episode 1100 propitemacc 0.656 baseline 1.979 reward_greedy 0.677
+episode 1200 propitemacc 0.661 baseline 1.987 reward_greedy 0.677
+episode 1300 propitemacc 0.669 baseline 2.009 reward_greedy 0.680
+episode 1400 propitemacc 0.667 baseline 1.998 reward_greedy 0.677
+```
+
+=> learning.
+
+lets send it to gpu1, and run in parallel with the utterance policy
+```
+python nets_test.py test-proposal-policy --enable-cuda
+```
+
+
