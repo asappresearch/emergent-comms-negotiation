@@ -162,6 +162,25 @@ added cuda, relaunchgin on gpu1:
 python nets_test.py test-utterance-policy --enable-cuda
 ```
 
+after some time, looks like:
+```
+episode 20700 letter acc 0.242 baseline 1.451 reward_greedy 0.242
+episode 20800 letter acc 0.245 baseline 1.473 reward_greedy 0.249
+episode 20900 letter acc 0.243 baseline 1.458 reward_greedy 0.247
+episode 21000 letter acc 0.241 baseline 1.442 reward_greedy 0.241
+episode 21100 letter acc 0.243 baseline 1.461 reward_greedy 0.245
+episode 21200 letter acc 0.249 baseline 1.487 reward_greedy 0.247
+episode 21300 letter acc 0.238 baseline 1.436 reward_greedy 0.240
+episode 21400 letter acc 0.238 baseline 1.444 reward_greedy 0.243
+episode 21500 letter acc 0.243 baseline 1.453 reward_greedy 0.245
+episode 21600 letter acc 0.243 baseline 1.465 reward_greedy 0.246
+episode 21700 letter acc 0.251 baseline 1.487 reward_greedy 0.247
+episode 21800 letter acc 0.245 baseline 1.482 reward_greedy 0.249
+episode 21900 letter acc 0.249 baseline 1.491 reward_greedy 0.249
+```
+
+=> only 25% of letters correct
+
 proposal policy
 ---------------
 
@@ -192,4 +211,27 @@ lets send it to gpu1, and run in parallel with the utterance policy
 python nets_test.py test-proposal-policy --enable-cuda
 ```
 
+after some time looks like:
+```
+episode 46800 propitemacc 0.409 baseline 1.227 reward_greedy 0.409
+episode 46900 propitemacc 0.409 baseline 1.227 reward_greedy 0.409
+episode 47000 propitemacc 0.409 baseline 1.227 reward_greedy 0.409
+episode 47100 propitemacc 0.409 baseline 1.227 reward_greedy 0.409
+episode 47200 propitemacc 0.409 baseline 1.227 reward_greedy 0.409
+episode 47300 propitemacc 0.409 baseline 1.227 reward_greedy 0.409
+episode 47400 propitemacc 0.409 baseline 1.227 reward_greedy 0.409
+episode 47500 propitemacc 0.409 baseline 1.227 reward_greedy 0.409
+episode 47600 propitemacc 0.409 baseline 1.227 reward_greedy 0.409
+episode 47700 propitemacc 0.409 baseline 1.227 reward_greedy 0.409
+episode 47800 propitemacc 0.409 baseline 1.227 reward_greedy 0.409
+episode 47900 propitemacc 0.409 baseline 1.227 reward_greedy 0.409
+episode 48000 propitemacc 0.409 baseline 1.227 reward_greedy 0.409
+episode 48100 propitemacc 0.409 baseline 1.227 reward_greedy 0.409
+episode 48200 propitemacc 0.409 baseline 1.227 reward_greedy 0.409
+episode 48300 propitemacc 0.409 baseline 1.227 reward_greedy 0.409
+episode 48400 propitemacc 0.409 baseline 1.227 reward_greedy 0.409
+episode 48500 propitemacc 0.409 baseline 1.227 reward_greedy 0.409
+episode 48600 propitemacc 0.409 baseline 1.227 reward_greedy 0.409
+```
 
+=> only 40% of proposal quantities correct
