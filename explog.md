@@ -340,3 +340,11 @@ merge command:
 ```
 python merge.py --hostname gpu1 --logfile logs/log_20171113_142411gpu1v030.log,logs/log_20171113_181106gpu1v030.log
 ```
+
+After running for a while, training curve is still not going above ~0.78, on prosocial setting.  Let's plot also the percentage of actions matching the argmax, as suggested in the comments response.
+
+added logging of fraction of time policy chooses argmax, and launched on gpu2:
+```
+python ecn.py --enable-cuda --name gpu2argmaxp --model-file model_saves/gpu2argmaxp.dat
+```
+

@@ -165,6 +165,12 @@ def run_episode(
     # entire batch, we will update them using sieve.out_idxes[...]
     rewards = type_constr.FloatTensor(batch_size, 2).fill_(0)
     num_steps = type_constr.LongTensor(batch_size).fill_(10)
+    term_matches_argmax_count = 0
+    utt_matches_argmax_count = 0
+    utt_stochastic_draws = 0
+    num_policy_runs = 0
+    prop_matches_argmax_count = 0
+    prop_stochastic_draws = 0
 
     entropy_loss_by_agent = [
         Variable(type_constr.FloatTensor(1).fill_(0)),
@@ -176,7 +182,9 @@ def run_episode(
         agent = t % 2
 
         agent_model = agent_models[agent]
-        nodes, term_a, s.m_prev, this_proposal, _entropy_loss = agent_model(
+        nodes, term_a, s.m_prev, this_proposal, _entropy_loss, \
+                _term_matches_argmax_count, _utt_matches_argmax_count, _utt_stochastic_draws, \
+                _prop_matches_argmax_count, _prop_stochastic_draws = agent_model(
             pool=Variable(s.pool),
             utility=Variable(s.utilities[:, agent]),
             m_prev=Variable(s.m_prev),
@@ -184,6 +192,12 @@ def run_episode(
         )
         entropy_loss_by_agent[agent] += _entropy_loss
         actions_by_timestep.append(nodes)
+        term_matches_argmax_count += _term_matches_argmax_count
+        num_policy_runs += sieve.batch_size
+        utt_matches_argmax_count += _utt_matches_argmax_count
+        utt_stochastic_draws += _utt_stochastic_draws
+        prop_matches_argmax_count += _prop_matches_argmax_count
+        prop_stochastic_draws += _prop_stochastic_draws
 
         if render and sieve.out_idxes[0] == 0:
             render_action(
@@ -216,7 +230,9 @@ def run_episode(
         print('  r: %.2f' % rewards[0].mean())
         print('  ')
 
-    return actions_by_timestep, rewards, num_steps, alive_masks, entropy_loss_by_agent
+    return actions_by_timestep, rewards, num_steps, alive_masks, entropy_loss_by_agent, \
+        term_matches_argmax_count, num_policy_runs, utt_matches_argmax_count, utt_stochastic_draws, \
+        prop_matches_argmax_count, prop_stochastic_draws
 
 
 def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, batch_size,
@@ -263,10 +279,18 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
     }))
     last_save = time.time()
     baseline = 0
+    term_matches_argmax_count = 0
+    num_policy_runs = 0
+    utt_matches_argmax_count = 0
+    utt_stochastic_draws = 0
+    prop_matches_argmax_count = 0
+    prop_stochastic_draws = 0
     while True:
-        render = time.time() - last_print >= 30.0
+        render = time.time() - last_print >= 5.0
         # render = True
-        actions, rewards, steps, alive_masks, entropy_loss_by_agent = run_episode(
+        actions, rewards, steps, alive_masks, entropy_loss_by_agent, \
+                _term_matches_argmax_count, _num_policy_runs, _utt_matches_argmax_count, _utt_stochastic_draws, \
+                _prop_matches_argmax_count, _prop_stochastic_draws = run_episode(
             enable_cuda=enable_cuda,
             enable_comms=enable_comms,
             enable_proposal=enable_proposal,
@@ -274,6 +298,12 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
             prosocial=prosocial,
             batch_size=batch_size,
             render=render)
+        term_matches_argmax_count += _term_matches_argmax_count
+        utt_matches_argmax_count += _utt_matches_argmax_count
+        utt_stochastic_draws += _utt_stochastic_draws
+        num_policy_runs += _num_policy_runs
+        prop_matches_argmax_count += _prop_matches_argmax_count
+        prop_stochastic_draws += _prop_stochastic_draws
 
         for i in range(2):
             agent_opts[i].zero_grad()
@@ -298,13 +328,16 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
 
         if render:
             time_since_last = time.time() - last_print
-            print('episode %s avg rewards %.3f %.3f b=%.3f games/sec %s avg steps %.4f' % (
+            print('episode %s avg rewards %.3f %.3f b=%.3f games/sec %s avg steps %.4f argmaxp term=%.4f utt=%.4f prop=%.4f' % (
                 episode,
                 rewards_sum[0] / count_sum,
                 rewards_sum[1] / count_sum,
                 baseline,
                 int(count_sum / time_since_last),
-                steps_sum / count_sum
+                steps_sum / count_sum,
+                term_matches_argmax_count / num_policy_runs,
+                utt_matches_argmax_count / utt_stochastic_draws,
+                prop_matches_argmax_count / prop_stochastic_draws
             ))
             f_log.write(json.dumps({
                 'episode': episode,
@@ -312,12 +345,21 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
                 'avg_reward_1': rewards_sum[1] / count_sum,
                 'avg_steps': steps_sum / count_sum,
                 'games_sec': count_sum / time_since_last,
-                'elapsed': time.time() - start_time
+                'elapsed': time.time() - start_time,
+                'argmaxp_term': term_matches_argmax_count / num_policy_runs,
+                'argmaxp_utt': utt_matches_argmax_count / utt_stochastic_draws,
+                'argmaxp_prop': prop_matches_argmax_count / prop_stochastic_draws
             }) + '\n')
             f_log.flush()
             last_print = time.time()
             steps_sum = 0
             rewards_sum = torch.zeros(2)
+            term_matches_argmax_count = 0
+            num_policy_runs = 0
+            utt_matches_argmax_count = 0
+            utt_stochastic_draws = 0
+            prop_matches_argmax_count = 0
+            prop_stochastic_draws = 0
             count_sum = 0
         if time.time() - last_save >= 30.0:
             save_model(

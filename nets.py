@@ -54,10 +54,14 @@ class TermPolicy(nn.Module):
     def forward(self, x, eps=1e-8):
         x = self.h1(x)
         x = F.sigmoid(x)
+        matches_argmax_count = 0
         out_node = torch.bernoulli(x)
+        _, argmax_res = x.data.max(1)
+        matches_argmax = argmax_res == out_node.data.long().view(-1)
+        matches_argmax_count = matches_argmax.int().sum()
         x = x + eps
         entropy = - (x * x.log()).sum(1).sum()
-        return out_node, out_node.data.byte(), entropy
+        return out_node, out_node.data.byte(), entropy, matches_argmax_count
 
 
 class UtterancePolicy(nn.Module):
@@ -80,17 +84,25 @@ class UtterancePolicy(nn.Module):
         h =h_t
         c = Variable(type_constr.FloatTensor(batch_size, self.embedding_size).fill_(0))
 
+        matches_argmax_count = 0
         last_token = type_constr.LongTensor(batch_size).fill_(0)
         utterance_nodes = []
         type_constr = torch.cuda if h_t.is_cuda else torch
         utterance = type_constr.LongTensor(batch_size, self.max_len).fill_(0)
         entropy = 0
+        matches_argmax_count = 0
+        stochastic_draws = 0
         for i in range(6):
             embedded = self.embedding(Variable(last_token))
             h, c = self.lstm(embedded, (h, c))
             out = self.h1(h)
             out = F.softmax(out)
             token_node = torch.multinomial(out)
+            _, argmax_res = out.data.max(1)
+            matches_argmax = argmax_res == token_node.data.long().view(-1)
+            matches_argmax_count += matches_argmax.int().sum()
+            stochastic_draws += batch_size
+
             utterance_nodes.append(token_node)
             last_token = token_node.data.view(batch_size)
             utterance[:, i] = last_token
@@ -99,7 +111,7 @@ class UtterancePolicy(nn.Module):
             entropy -= (out * out.log()).sum(1).sum()
             # print('entropy', entropy)
             # asdfasd
-        return utterance_nodes, utterance, entropy
+        return utterance_nodes, utterance, entropy, matches_argmax_count, stochastic_draws
 
 
 class ProposalPolicy(nn.Module):
@@ -118,18 +130,27 @@ class ProposalPolicy(nn.Module):
         batch_size = x.size()[0]
         nodes = []
         entropy = 0
+        matches_argmax_count = 0
         type_constr = torch.cuda if x.is_cuda else torch
+        matches_argmax_count = 0
+        stochastic_draws = 0
         proposal = type_constr.LongTensor(batch_size, self.num_items).fill_(0)
         for i in range(self.num_items):
             x1 = self.fcs[i](x)
             x2 = F.softmax(x1)
             node = torch.multinomial(x2)
+
+            _, argmax_res = x2.data.max(1)
+            matches_argmax = argmax_res == node.data.long().view(-1)
+            matches_argmax_count += matches_argmax.int().sum()
+            stochastic_draws += batch_size
+
             nodes.append(node)
             x2 = x2 + eps
             entropy += (- x2 * x2.log()).sum(1).sum()
             proposal[:, i] = node.data
 
-        return nodes, proposal, entropy
+        return nodes, proposal, entropy, matches_argmax_count, stochastic_draws
 
 
 class AgentModel(nn.Module):
@@ -174,20 +195,21 @@ class AgentModel(nn.Module):
         entropy_loss = 0
         nodes = []
 
-        term_node, term_a, entropy = self.term_policy(h_t)
+        term_node, term_a, entropy, term_matches_argmax_count = self.term_policy(h_t)
         nodes.append(term_node)
         entropy_loss -= entropy * self.term_entropy_reg
 
         utterance = None
         if self.enable_comms:
-            utterance_nodes, utterance, utterance_entropy = self.utterance_policy(h_t)
+            utterance_nodes, utterance, utterance_entropy, utt_matches_argmax_count, utt_stochastic_draws = self.utterance_policy(h_t)
             nodes += utterance_nodes
             entropy_loss -= self.utterance_entropy_reg * utterance_entropy
         else:
             utterance = type_constr.LongTensor(batch_size, 6).zero_()  # hard-coding 6 here is a bit hacky...
 
-        proposal_nodes, proposal, proposal_entropy = self.proposal_policy(h_t)
+        proposal_nodes, proposal, proposal_entropy, prop_matches_argmax_count, prop_stochastic_draws = self.proposal_policy(h_t)
         nodes += proposal_nodes
         entropy_loss -= self.proposal_entropy_reg * proposal_entropy
 
-        return nodes, term_a, utterance, proposal, entropy_loss
+        return nodes, term_a, utterance, proposal, entropy_loss, \
+            term_matches_argmax_count, utt_matches_argmax_count, utt_stochastic_draws, prop_matches_argmax_count, prop_stochastic_draws
