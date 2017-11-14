@@ -348,3 +348,17 @@ added logging of fraction of time policy chooses argmax, and launched on gpu2:
 python ecn.py --enable-cuda --name gpu2argmaxp --model-file model_saves/gpu2argmaxp.dat
 ```
 
+After running overnight:
+- first run (gpu1) is still around ~0.78, [images/v030_comms_social_prop_run1.png]
+- second run (gpu2) plateud at ~0.75 for ~60,000 batches, then rose to 0.82 [images/v030_comms_social_prop_run2.png]
+
+For the second one, we can see the proportion of policy choices that match the argmax:
+```
+episode 119066 avg rewards 0.814 0.814 b=0.827 games/sec 498 avg steps 3.8084 argmaxp term=0.7426 utt=0.1466 prop=0.3427
+```
+The proportions are:
+- termination policy: 0.74
+- utterance policy: 0.15
+- proposal policy: 0.34
+
+Seems entropy not too small? (but maybe too large?)
