@@ -101,30 +101,36 @@ class UtterancePolicy(nn.Module):
         utterance = type_constr.LongTensor(batch_size, self.max_len).fill_(0)
         entropy = 0
         matches_argmax_count = 0
-        stochastic_draws = 0
+        stochastic_draws_count = 0
         for i in range(6):
             embedded = self.embedding(Variable(last_token))
             h, c = self.lstm(embedded, (h, c))
-            out = self.h1(h)
-            out = F.softmax(out)
+            logits = self.h1(h)
+            probs = F.softmax(logits)
 
+            _, res_greedy = probs.data.max(1)
+            res_greedy = res_greedy.view(-1, 1).long()
+
+            log_g = None
             if not testing:
-                token_node = torch.multinomial(out)
+                a = torch.multinomial(probs)
+                g = torch.gather(probs, 1, Variable(a.data))
+                log_g = g.log()
+                a = a.data
             else:
-                _, token_node = out.max(1)
-                token_node = token_node.view(-1, 1)
+                a = res_greedy
 
-            _, argmax_res = out.data.max(1)
-            matches_argmax = argmax_res == token_node.data.long().view(-1)
+            matches_argmax = res_greedy == a
             matches_argmax_count += matches_argmax.int().sum()
-            stochastic_draws += batch_size
+            stochastic_draws_count += batch_size
 
-            utterance_nodes.append(token_node)
-            last_token = token_node.data.view(batch_size)
+            if log_g is not None:
+                utterance_nodes.append(log_g)
+            last_token = a.view(batch_size)
             utterance[:, i] = last_token
-            out = out + eps
-            entropy -= (out * out.log()).sum(1).sum()
-        return utterance_nodes, utterance, entropy, matches_argmax_count, stochastic_draws
+            probs = probs + eps
+            entropy -= (probs * probs.log()).sum(1).sum()
+        return utterance_nodes, utterance, entropy, matches_argmax_count, stochastic_draws_count
 
 
 class ProposalPolicy(nn.Module):

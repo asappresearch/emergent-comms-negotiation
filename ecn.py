@@ -325,18 +325,27 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
         if not testing:
             for i in range(2):
                 agent_opts[i].zero_grad()
-            nodes_by_agent = [[], []]
+            # nodes_by_agent = [[], []]
+            reward_loss_by_agent = [0, 0]
             baselined_rewards = rewards - baseline
             sieve_playback = alive_sieve.SievePlayback(alive_masks, enable_cuda=enable_cuda)
             for t, global_idxes in sieve_playback:
                 agent = t % 2
                 if len(actions[t]) > 0:
                     for action in actions[t]:
-                        action.reinforce(baselined_rewards[global_idxes][:, agent].contiguous().view(
-                            sieve_playback.batch_size, 1))
-                    nodes_by_agent[agent] += actions[t]
+                        _reward = baselined_rewards[global_idxes][:, agent].float().contiguous().view(
+                            sieve_playback.batch_size, 1)
+                        print('type(action.data)', type(action.data), 'action.data.size()', action.data.size())
+                        _reward_loss = - (action * Variable(_reward))
+                        _reward_loss = _reward_loss.sum()
+                        reward_loss_by_agent[agent] += _reward_loss
+                        # action.reinforce(baselined_rewards[global_idxes][:, agent].contiguous().view(
+                        #     sieve_playback.batch_size, 1))
+                    # nodes_by_agent[agent] += actions[t]
             for i in range(2):
-                autograd.backward([entropy_loss_by_agent[i]] + nodes_by_agent[i], [None] + len(nodes_by_agent[i]) * [None])
+                loss = entropy_loss_by_agent[i] + reward_loss_by_agent[i]
+                loss.backward()
+                # autograd.backward([entropy_loss_by_agent[i]] + nodes_by_agent[i], [None] + len(nodes_by_agent[i]) * [None])
                 agent_opts[i].step()
 
         rewards_sum += rewards.sum(0).cpu()
