@@ -748,4 +748,29 @@ log_20171115_144928gpu7nosoc1.log
 
 new merge command for comms,prop,soc: `python merge.py --hostname gpu1 --logfile 'logs/log_20171115_012645gpu1withtests.log,logs/log_20171115_084751gpu2withtestsrun3.log,logs/log_20171115_144911gpu6withtestsrun4.log' --title 'Comms,Prop,Soc termreg 0.5 uttreg 0.0001 propreg 0.01'`
 
-see: [images/comms_prop_soc_tests_threeruns.png]
+see: [images/comms_prop_soc_tests_threerunsb.png]
+
+other merge commands:
+```
+python merge.py --hostname gpu1 --logfile 'logs/log_20171115_110859gpu5nocommsnoprop.log' --title 'No comms, no prop, soc termreg 0.5 uttreg 0.0001 propreg 0.01' --min-y 0.68 --max-y 0.9
+cp /tmp/out-reward.png images/20171115_noprop_nocomms_soc.png
+
+python merge.py --hostname gpu1 --logfile 'logs/log_20171115_092824gpu4noprop.log' --title 'Comms, no prop, soc termreg 0.5 uttreg 0.0001 propreg 0.01' --min-y 0.68 --max-y 0.9
+cp /tmp/out-reward.png images/20171115_noprop_comms_soc.png
+
+python merge.py --hostname gpu1 --logfile 'logs/log_20171115_091432gpu3nocomms.log' --title 'No comms, prop, soc termreg 0.5 uttreg 0.0001 propreg 0.01' --min-y 0.72 --max-y 0.95
+cp /tmp/out-reward.png images/20171115_prop_nocomms_soc.png
+
+python merge.py --hostname gpu1 --logfile 'logs/log_20171115_125020gpu7nosoc1.log' --title 'Comms, prop, no soc termreg 0.5 uttreg 0.0001 propreg 0.01'
+cp /tmp/out-reward.png images/20171115_prop_comms_nosoc.png
+```
+
+greedy proportions, samples by hand:
+```
+comms prop soc: term=0.7345 utt=0.7635 prop=0.8304
+nocomms prop soc: term=0.6965 utt=0.0000 prop=0.8741
+comms noprop soc: term=0.6889 utt=0.7849 prop=0.8222
+nocomms noprop soc: term=0.7781 utt=0.0000 prop=0.6006
+comms prop nosoc: term=0.7467 utt=0.9284 prop=0.8137
+```
+
