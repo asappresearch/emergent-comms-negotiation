@@ -10,12 +10,13 @@ Reproduce https://openreview.net/forum?id=Hk6WhagRW&amp;noteId=Hk6WhagRW , "Emer
 ## To run
 
 ```
-python ecn.py [--disable-comms] [--enable-cuda] [--term-entropy-reg 0.5] [--utterance-entropy-reg 0.0001] [--proposal-entropy-reg 0.01] [--model-file model_saves/mymodel.dat] [--name gpu3box]
+python ecn.py [--disable-comms] [--disable-proposal] [--enable-cuda] [--term-entropy-reg 0.5] [--utterance-entropy-reg 0.0001] [--proposal-entropy-reg 0.01] [--model-file model_saves/mymodel.dat] [--name gpu3box]
 ```
 
 Where options are:
 - `--enable-cuda`: use NVIDIA GPU, instead of CPU
 - `--disable-comms`: disable the comms channel
+- `--disable-proposal`: disable the proposal channel (ie agent can create proposals, but other agent cant see them)
 - `--term-entropy-reg VALUE`: termination policy entropy regularization
 - `--utterance-entorpy-reg VALUE`: utterance policy entropy regularization
 - `--proposal-entropy-reg VALUE`: proposal policy entropy regularization

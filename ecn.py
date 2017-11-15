@@ -190,13 +190,24 @@ def run_episode(
         agent = t % 2
 
         agent_model = agent_models[agent]
+        if enable_comms:
+            _prev_message = s.m_prev
+        else:
+            # we dont strictly need to blank them, since they'll be all zeros anyway,
+            # but defense in depth and all that :)
+            _prev_message = type_constr.LongTensor(sieve.batch_size, 6).fill_(0)
+        if enable_proposal:
+            _prev_proposal = s.last_proposal
+        else:
+            # we do need to blank this one though :)
+            _prev_proposal = type_constr.LongTensor(sieve.batch_size, 3).fill_(0)
         nodes, term_a, s.m_prev, this_proposal, _entropy_loss, \
                 _term_matches_argmax_count, _utt_matches_argmax_count, _utt_stochastic_draws, \
                 _prop_matches_argmax_count, _prop_stochastic_draws = agent_model(
             pool=Variable(s.pool),
             utility=Variable(s.utilities[:, agent]),
             m_prev=Variable(s.m_prev),
-            prev_proposal=Variable(s.last_proposal),
+            prev_proposal=Variable(_prev_proposal),
             testing=testing
         )
         entropy_loss_by_agent[agent] += _entropy_loss

@@ -674,4 +674,8 @@ Let's also do a run with comms turned off. Using new gpu3 instance:
 python ecn.py --enable-cuda --name gpu3nocomms --disable-comms --model-file model_saves/gpu3nocomms_reg0_5_uttreg0_0001_propreg0_01_run1.dat --term-entropy-reg 0.5 --utterance-entropy-reg 0.0001 --proposal-entropy-reg 0.01
 ```
 
-
+and another with proposal off, using gpu4:
+```
+python ecn.py --enable-cuda --name gpu4noprop --disable-proposal --model-file model_saves/gpu4noprop_reg0_5_uttreg0_0001_propreg0_01_run1.dat --term-entropy-reg 0.5 --utterance-entropy-reg 0.0001 --proposal-entropy-reg 0.01
+```
+(launched)
