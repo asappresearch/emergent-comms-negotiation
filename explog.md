@@ -619,3 +619,9 @@ episode 87159 avg rewards 0.945 0.945 b=0.950 games/sec 1113 avg steps 3.0455 ar
 ```
 
 I think we should add an automatic test step into the main training loop.
+
+Plot graph:
+```
+python merge.py --hostname gpu2 --logfile logs/log_20171114_182322gpu2newreinf.log --title 'Comms,Prop,Soc termreg 0.5 uttreg 0.0001 propreg 0.01'
+cp /tmp/out-reward.png images/v030_comms_social_prop_termreg0_5_uttreg0_0001_propreg0_01.png
+```
