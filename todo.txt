@@ -2,6 +2,8 @@ todo:
 - check for correlation between utterances and utility?
 - maybe break the problem down, and test each part standalone somehow?
 - (change number of utteracne tokens from 10 to 11)
+- probably should rerun with comms turned off
+- should we do also non-prosocial?
 
 done:
 - add reward

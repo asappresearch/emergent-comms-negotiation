@@ -240,6 +240,8 @@ class AgentModel(nn.Module):
             nodes += utterance_nodes
             entropy_loss -= self.utterance_entropy_reg * utterance_entropy
         else:
+            utt_matches_argmax_count = 0
+            utt_stochastic_draws = 0
             utterance = type_constr.LongTensor(batch_size, 6).zero_()  # hard-coding 6 here is a bit hacky...
 
         proposal_nodes, proposal, proposal_entropy, prop_matches_argmax_count, prop_stochastic_draws = self.proposal_policy(

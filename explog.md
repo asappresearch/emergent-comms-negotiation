@@ -668,3 +668,10 @@ test rewards 0.894
 episode 112004 avg rewards 0.818 0.818 b=0.828 games/sec 531 avg steps 2.8790 argmaxp term=0.7411 utt=0.7788 prop=0.8223
 ```
 ie greedy percentage somewhere around 70-80%
+
+Let's also do a run with comms turned off. Using new gpu3 instance:
+```
+python ecn.py --enable-cuda --name gpu3nocomms --disable-comms --model-file model_saves/gpu3nocomms_reg0_5_uttreg0_0001_propreg0_01_run1.dat --term-entropy-reg 0.5 --utterance-entropy-reg 0.0001 --proposal-entropy-reg 0.01
+```
+
+

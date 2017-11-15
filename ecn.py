@@ -244,6 +244,15 @@ def run_episode(
         prop_matches_argmax_count, prop_stochastic_draws
 
 
+def safe_div(a, b):
+    """
+    returns a / b, unless b is zero, in which case returns 0
+
+    this is primarily for usage in cases where b might be systemtically zero, eg because comms are disabled or similar
+    """
+    return 0 if b == 0 else a / b
+
+
 def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, batch_size,
         term_entropy_reg, utterance_entropy_reg, proposal_entropy_reg, enable_cuda,
         no_load, testing, test_seed):
@@ -390,7 +399,7 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
                 int(count_sum / time_since_last),
                 steps_sum / count_sum,
                 term_matches_argmax_count / num_policy_runs,
-                utt_matches_argmax_count / utt_stochastic_draws,
+                safe_div(utt_matches_argmax_count, utt_stochastic_draws),
                 prop_matches_argmax_count / prop_stochastic_draws
             ))
             f_log.write(json.dumps({
@@ -402,7 +411,7 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
                 'games_sec': count_sum / time_since_last,
                 'elapsed': time.time() - start_time,
                 'argmaxp_term': term_matches_argmax_count / num_policy_runs,
-                'argmaxp_utt': utt_matches_argmax_count / utt_stochastic_draws,
+                'argmaxp_utt': safe_div(utt_matches_argmax_count, utt_stochastic_draws),
                 'argmaxp_prop': prop_matches_argmax_count / prop_stochastic_draws
             }) + '\n')
             f_log.flush()
