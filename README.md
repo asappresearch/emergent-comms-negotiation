@@ -65,6 +65,22 @@ Note that the difference between train and test:
 - train are essentially on randomly drawn games, albeit disjoint with test games. Stochastic draws are enabled
 - test is on a fixed set of 5 batches of 128 games. Stochasticity is disabled, and the greedy/argmax action is taken
 
+### proposal, no comms, prosocial
+
+<img src="images/20171115_prop_nocomms_soc.png?raw=true" width="800" />
+
+### no proposal, comms, prosocial
+
+<img src="images/20171115_noprop_comms_soc.png?raw=true" width="800" />
+
+### no proposal, no comms, prosocial
+
+<img src="images/20171115_noprop_nocomms_soc.png?raw=true" width="800" />
+
+### proposal, comms, no social
+
+<img src="images/20171115_prop_comms_nosoc.png?raw=true" width="800" />
+
 ## Unit tests
 
 - install pytest, ie `conda install -y pytest`, and then:
