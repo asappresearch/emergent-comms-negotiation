@@ -31,3 +31,4 @@ done:
 - add option to remove stochasticity, pick argmax, for testing
 - add train/test split
 - add test to training loop
+- added `--disable-proposal`

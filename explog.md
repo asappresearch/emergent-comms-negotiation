@@ -679,3 +679,10 @@ and another with proposal off, using gpu4:
 python ecn.py --enable-cuda --name gpu4noprop --disable-proposal --model-file model_saves/gpu4noprop_reg0_5_uttreg0_0001_propreg0_01_run1.dat --term-entropy-reg 0.5 --utterance-entropy-reg 0.0001 --proposal-entropy-reg 0.01
 ```
 (launched)
+
+Let's also do no-comms, no-proposal, on gpu5:
+
+```
+python ecn.py --enable-cuda --name gpu5nocommsnoprop --disable-proposal --disable-comms --model-file model_saves/gpu5nocommsnoprop_reg0_5_uttreg0_0001_propreg0_01_run1.dat --term-entropy-reg 0.5 --utterance-entropy-reg 0.0001 --proposal-entropy-reg 0.01
+```
+(launched)
