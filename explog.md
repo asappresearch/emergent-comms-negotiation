@@ -644,8 +644,17 @@ implemented running tests every 30 seconds or so, lets spin up a gpu, and start 
 
 ```
 python ecn.py --enable-cuda --name gpu1withtests --model-file model_saves/gpu1newreinf_termentreg0_5_uttreg0_0001_propreg0_01.dat --term-entropy-reg 0.5 --utterance-entropy-reg 0.0001 --proposal-entropy-reg 0.01
-python merge.py --hostname gpu2 --logfile logs/log_20171115_012645gpu1withtests.log --title 'Comms,Prop,Soc termreg 0.5 uttreg 0.0001 propreg 0.01, run 2'
+python merge.py --hostname gpu1 --logfile logs/log_20171115_012645gpu1withtests.log --title 'Comms,Prop,Soc termreg 0.5 uttreg 0.0001 propreg 0.01, run 2'
 ```
 
 After ~100k batches, this second run looks promising, reached ~0.94 on test, ie with stochasticity disabled:
 - [images/v030_comms_social_prop_termreg0_5_uttreg0_0001_propreg0_01_run2.png]
+
+(shutting down the other one, since 1. plateaud, 2. reached ~200k batches, 3. no non-stochastic logging)
+
+some variance between the two runs. lets launch another run, and see what happens. on new gpu2:
+
+```
+python ecn.py --enable-cuda --name gpu2withtestsrun3 --model-file model_saves/gpu2newreinf_termentreg0_5_uttreg0_0001_propreg0_01_run3.dat --term-entropy-reg 0.5 --utterance-entropy-reg 0.0001 --proposal-entropy-reg 0.01
+```
+(launched)
