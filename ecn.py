@@ -115,7 +115,7 @@ def run_episode(
 
     # next two tensofrs wont be sieved, they will stay same size throughout
     # entire batch, we will update them using sieve.out_idxes[...]
-    rewards = type_constr.FloatTensor(batch_size, 2).fill_(0)
+    rewards = type_constr.FloatTensor(batch_size, 3).fill_(0)
     num_steps = type_constr.LongTensor(batch_size).fill_(10)
     term_matches_argmax_count = 0
     utt_matches_argmax_count = 0
@@ -174,7 +174,6 @@ def run_episode(
         new_rewards = rewards_lib.calc_rewards(
             t=t,
             s=s,
-            prosocial=prosocial,
             term=term_a
         )
         rewards[sieve.out_idxes] = new_rewards
@@ -210,13 +209,14 @@ def safe_div(a, b):
 
 def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, batch_size,
         term_entropy_reg, utterance_entropy_reg, proposal_entropy_reg, enable_cuda,
-        no_load, testing, test_seed):
+        no_load, testing, test_seed, render_every_seconds):
     """
     testing option will:
     - use argmax, ie disable stochastic draws
     - not run optimizers
     - not save model
     """
+    type_constr = torch.cuda if enable_cuda else torch
     if seed is not None:
         np.random.seed(seed)
         torch.manual_seed(seed)
@@ -256,7 +256,7 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
         print('')
         return
     last_print = time.time()
-    rewards_sum = torch.zeros(2)
+    rewards_sum = torch.zeros(3)
     steps_sum = 0
     count_sum = 0
     for d in ['logs', 'model_saves']:
@@ -270,7 +270,7 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
         'seed': seed
     }))
     last_save = time.time()
-    baseline = 0
+    baseline = type_constr.FloatTensor(3).fill_(0)
     term_matches_argmax_count = 0
     num_policy_runs = 0
     utt_matches_argmax_count = 0
@@ -278,7 +278,7 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
     prop_matches_argmax_count = 0
     prop_stochastic_draws = 0
     while True:
-        render = time.time() - last_print >= 30.0
+        render = time.time() - last_print >= render_every_seconds
         # render = True
         batch = sampling.generate_training_batch(batch_size=batch_size, test_hashes=test_hashes, random_state=train_r)
         actions, rewards, steps, alive_masks, entropy_loss_by_agent, \
@@ -305,12 +305,19 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
                 agent_opts[i].zero_grad()
             reward_loss_by_agent = [0, 0]
             baselined_rewards = rewards - baseline
+            rewards_by_agent = []
+            for i in range(2):
+                if prosocial:
+                    rewards_by_agent.append(baselined_rewards[:, 2])
+                else:
+                    rewards_by_agent.append(baselined_rewards[:, i])
             sieve_playback = alive_sieve.SievePlayback(alive_masks, enable_cuda=enable_cuda)
             for t, global_idxes in sieve_playback:
                 agent = t % 2
                 if len(actions[t]) > 0:
                     for action in actions[t]:
-                        _reward = baselined_rewards[global_idxes][:, agent].float().contiguous().view(
+                        _rewards = rewards_by_agent[agent]
+                        _reward = _rewards[global_idxes].float().contiguous().view(
                             sieve_playback.batch_size, 1)
                         _reward_loss = - (action * Variable(_reward))
                         _reward_loss = _reward_loss.sum()
@@ -320,18 +327,18 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
                 loss.backward()
                 agent_opts[i].step()
 
-        rewards_sum += rewards.sum(0).cpu()
+        rewards_sum += rewards.sum(0)
         steps_sum += steps.sum()
-        baseline = 0.7 * baseline + 0.3 * rewards.mean()
+        baseline = 0.7 * baseline + 0.3 * rewards.mean(0)
         count_sum += batch_size
 
         if render:
             """
             run the test batches, print the results
             """
-            test_rewards = 0
+            test_rewards_sum = 0
             for test_batch in test_batches:
-                actions, rewards, steps, alive_masks, entropy_loss_by_agent, \
+                actions, test_rewards, steps, alive_masks, entropy_loss_by_agent, \
                         _term_matches_argmax_count, _num_policy_runs, _utt_matches_argmax_count, _utt_stochastic_draws, \
                         _prop_matches_argmax_count, _prop_stochastic_draws = run_episode(
                     batch=test_batch,
@@ -342,15 +349,20 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
                     prosocial=prosocial,
                     render=True,
                     testing=True)
-                test_rewards += rewards.mean()
-            print('test rewards %.3f' % (test_rewards / len(test_batches)))
+                test_rewards_sum += test_rewards[:, 2].mean()
+            print('test reward=%.3f' % (test_rewards_sum / len(test_batches)))
 
             time_since_last = time.time() - last_print
-            print('episode %s avg rewards %.3f %.3f b=%.3f games/sec %s avg steps %.4f argmaxp term=%.4f utt=%.4f prop=%.4f' % (
+            if prosocial:
+                baseline_str = '%.2f' % baseline[2]
+                # rewards_str = '%.2f' % (rewards_sum[2] / count_sum)
+            else:
+                baseline_str = '%.2f,%.2f' % (baseline[0], baseline[1])
+            rewards_str = '%.2f,%.2f,%.2f' % (rewards_sum[0] / count_sum, rewards_sum[1] / count_sum, rewards_sum[2] / count_sum)
+            print('e=%s train=%s b=%s games/sec %s avg steps %.4f argmaxp term=%.4f utt=%.4f prop=%.4f' % (
                 episode,
-                rewards_sum[0] / count_sum,
-                rewards_sum[1] / count_sum,
-                baseline,
+                rewards_str,
+                baseline_str,
                 int(count_sum / time_since_last),
                 steps_sum / count_sum,
                 term_matches_argmax_count / num_policy_runs,
@@ -361,18 +373,18 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
                 'episode': episode,
                 'avg_reward_0': rewards_sum[0] / count_sum,
                 'avg_reward_1': rewards_sum[1] / count_sum,
-                'test_reward': test_rewards / len(test_batches),
+                'test_reward': test_rewards_sum / len(test_batches),
                 'avg_steps': steps_sum / count_sum,
                 'games_sec': count_sum / time_since_last,
                 'elapsed': time.time() - start_time,
-                'argmaxp_term': term_matches_argmax_count / num_policy_runs,
+                'argmaxp_term': (term_matches_argmax_count / num_policy_runs),
                 'argmaxp_utt': safe_div(utt_matches_argmax_count, utt_stochastic_draws),
-                'argmaxp_prop': prop_matches_argmax_count / prop_stochastic_draws
+                'argmaxp_prop': (prop_matches_argmax_count / prop_stochastic_draws)
             }) + '\n')
             f_log.flush()
             last_print = time.time()
             steps_sum = 0
-            rewards_sum = torch.zeros(2)
+            rewards_sum.fill_(0)
             term_matches_argmax_count = 0
             num_policy_runs = 0
             utt_matches_argmax_count = 0
@@ -406,6 +418,7 @@ if __name__ == '__main__':
     parser.add_argument('--disable-proposal', action='store_true')
     parser.add_argument('--disable-comms', action='store_true')
     parser.add_argument('--disable-prosocial', action='store_true')
+    parser.add_argument('--render-every-seconds', type=int, default=30)
     parser.add_argument('--testing', action='store_true', help='turn off learning; always pick argmax')
     parser.add_argument('--enable-cuda', action='store_true')
     parser.add_argument('--no-load', action='store_true')

@@ -1,16 +1,22 @@
 import torch
 
 
-def calc_rewards(t, prosocial, s, term):
+def calc_rewards(t, s, term):
     # calcualate rewards for any that just finished
+    # it will calculate three reward values:
+    # agent 1 (as proporition of max agent 1), agent 2 (as proportion of max agent 2), prosocial (as proportion of max prosocial)
+    # in the non-prosocial setting, we need all three:
+    # - first two for training
+    # - next one for evaluating Table 1, in the paper
+    # in the prosocial case, we'll skip calculating the individual agent rewards, possibly/probably
 
-    assert prosocial, 'not tested for not prosocial currently'
+    # assert prosocial, 'not tested for not prosocial currently'
 
     agent = t % 2
     batch_size = term.size()[0]
     utility = s.utilities[:, agent]
     type_constr = torch.cuda if s.pool.is_cuda else torch
-    rewards_batch = type_constr.FloatTensor(batch_size, 2).fill_(0)
+    rewards_batch = type_constr.FloatTensor(batch_size, 3).fill_(0)  # each row is: {one, two, combined}
     if t == 0:
         # on first timestep theres no actual proposal yet, so score zero if terminate
         return rewards_batch
@@ -36,23 +42,22 @@ def calc_rewards(t, prosocial, s, term):
 
     reward_eligible_idxes = reward_eligible_mask.nonzero().long().view(-1)
     for b in reward_eligible_idxes:
-        rewards = torch.FloatTensor(2).fill_(0)
+        raw_rewards = torch.FloatTensor(2).fill_(0)
         for i in range(2):
-            rewards[i] = s.utilities[b, i].cpu().dot(proposal[b, i].cpu())
+            raw_rewards[i] = s.utilities[b, i].cpu().dot(proposal[b, i].cpu())
 
-        if prosocial:
-            total_actual_reward = rewards.sum()
-            total_possible_reward = max_utility[b].cpu().dot(s.pool[b].cpu())
-            scaled_reward = 0
-            if total_possible_reward != 0:
-                scaled_reward = total_actual_reward / total_possible_reward
-            rewards.fill_(scaled_reward)
-        else:
-            for i in range(2):
-                max_possible = s.utilities[b, i].cpu().dot(s.pool.cpu())
-                if max_possible != 0:
-                    rewards[i] /= max_possible
+        scaled_rewards = torch.FloatTensor(3).fill_(0)
 
-        # alive_games[b]['rewards'] = rewards
-        rewards_batch[b] = rewards
+        # we always calculate the prosocial reward
+        actual_prosocial = raw_rewards.sum()
+        available_prosocial = max_utility[b].cpu().dot(s.pool[b].cpu())
+        if available_prosocial != 0:
+            scaled_rewards[2] = actual_prosocial / available_prosocial
+
+        for i in range(2):
+            max_agent = s.utilities[b, i].cpu().dot(s.pool[b].cpu())
+            if max_agent != 0:
+                scaled_rewards[i] = raw_rewards[i] / max_agent
+
+        rewards_batch[b] = scaled_rewards
     return rewards_batch
