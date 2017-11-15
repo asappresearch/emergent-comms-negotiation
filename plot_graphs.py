@@ -35,13 +35,14 @@ def plot_reward(logfile, min_y, max_y, title, max_x):
                     reward.append(float(d['avg_reward_0']))
                     if 'test_reward' in d:
                         test_reward.append(d['test_reward'])
+        print('epoch[0]', epoch[0], 'epochs[-1]', epoch[-1])
         while len(epoch) > 200:
             new_epoch = []
             new_reward = []
             new_test_reward = []
             for n in range(len(epoch) // 2):
                 r = (reward[n * 2] + reward[n * 2 + 1]) / 2
-                e = epoch[n] * 2
+                e = (epoch[n * 2] + epoch[n * 2 + 1]) // 2
                 new_epoch.append(e)
                 new_reward.append(r)
                 if len(test_reward) > 0:
@@ -50,6 +51,7 @@ def plot_reward(logfile, min_y, max_y, title, max_x):
             epoch = new_epoch
             reward = new_reward
             test_reward = new_test_reward
+        print('epoch[0]', epoch[0], 'epochs[-1]', epoch[-1])
         if min_y is None:
             min_y = 0
         if max_y is not None:

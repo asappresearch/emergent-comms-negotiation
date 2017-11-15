@@ -10,13 +10,14 @@ Reproduce https://openreview.net/forum?id=Hk6WhagRW&amp;noteId=Hk6WhagRW , "Emer
 ## To run
 
 ```
-python ecn.py [--disable-comms] [--disable-proposal] [--enable-cuda] [--term-entropy-reg 0.5] [--utterance-entropy-reg 0.0001] [--proposal-entropy-reg 0.01] [--model-file model_saves/mymodel.dat] [--name gpu3box]
+python ecn.py [--disable-comms] [--disable-proposal] [--disable-prosocial] [--enable-cuda] [--term-entropy-reg 0.5] [--utterance-entropy-reg 0.0001] [--proposal-entropy-reg 0.01] [--model-file model_saves/mymodel.dat] [--name gpu3box]
 ```
 
 Where options are:
 - `--enable-cuda`: use NVIDIA GPU, instead of CPU
 - `--disable-comms`: disable the comms channel
 - `--disable-proposal`: disable the proposal channel (ie agent can create proposals, but other agent cant see them)
+- `--disable-prosocial`: disable prosocial reward
 - `--term-entropy-reg VALUE`: termination policy entropy regularization
 - `--utterance-entorpy-reg VALUE`: utterance policy entropy regularization
 - `--proposal-entropy-reg VALUE`: proposal policy entropy regularization
@@ -49,9 +50,9 @@ One negotation is printed out every 3 seconds or so, using the training set; the
 
 ### proposal, comms, prosocial
 
-<img src="images/v030_comms_social_prop_termreg0_5_uttreg0_0001_propreg0_01_run2.png?raw=true" width="800" />
+Graphs for three training runs, with identical settings:
 
-<img src="images/comms_prop_soc_tests_threeruns.png?raw=true" width="800" />
+<img src="images/comms_prop_soc_tests_threerunsb.png?raw=true" width="800" />
 
 This is using the following entropy regularizations:
 - termination: 0.5
