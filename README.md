@@ -9,17 +9,18 @@ Reproduce https://openreview.net/forum?id=Hk6WhagRW&amp;noteId=Hk6WhagRW , "Emer
 
 ## To run
 
-CPU:
 ```
-python ecn.py [--disable-comms]
-```
-
-GPU:
-```
-python ecn.py [--disable-comms] --enable-cuda
+python ecn.py [--disable-comms] [--enable-cuda] [--term-entropy-reg 0.5] [--utterance-entropy-reg 0.0001] [--proposal-entropy-reg 0.01] [--model-file model_saves/mymodel.dat] [--name gpu3box]
 ```
 
-~~Note that comms currently not yet implemented/working.~~
+Where options are:
+- `--enable-cuda`: use NVIDIA GPU, instead of CPU
+- `--disable-comms`: disable the comms channel (not tested since a while, might not be working)
+- `--term-entropy-reg VALUE`: termination policy entropy regularization
+- `--utterance-entorpy-reg VALUE`: utterance policy entropy regularization
+- `--proposal-entropy-reg VALUE`: proposal policy entropy regularization
+- `--model-file models_saves/FILENAME`: where to save the model to, and where to look for it on startup
+- `--name NAME`: this is used in the logfile name, just to make it easier to find/distinguish logfiles, no other purpose
 
 ## Stdout layout
 
@@ -45,13 +46,20 @@ One negotation is printed out every 3 seconds or so, using the training set; the
 
 ## Results so far
 
-### proposal, no comms, prosocial
-
-<img src="images/20171104_144936_proposal_social_nocomms_b.png?raw=true" width="800" />
-
 ### proposal, comms, prosocial
 
-<img src="images/20171104_192343gpu2_proposal_social_comms_c.png?raw=true" width="800" />
+<img src="images/v030_comms_social_prop_termreg0_5_uttreg0_0001_propreg0_01_run2.png?raw=true" width="800" />
+
+This is using the following entropy regularizations:
+- termination: 0.5
+- utterance: 0.0001
+- proposal: 0.01
+
+This seems approximately in line with the results in Table 1 of the paper. This would be 'Prosocial, random termination, Both: Fraction of joint reward'
+
+Note that the difference between train and test:
+- train are essentially on randomly drawn games, albeit disjoint with test games. Stochastic draws are enabled
+- test is on a fixed set of 5 batches of 128 games. Stochasticity is disabled, and the greedy/argmax action is taken
 
 ## Unit tests
 
@@ -59,6 +67,11 @@ One negotation is printed out every 3 seconds or so, using the training set; the
 ```
 py.test -svx
 ```
+- there are also some additional tests in:
+```
+python net_tests.py
+```
+(which allow close examination of specific parts of the network, policies, and so on; but which arent really 'unit-tests' as such, since neither termination criteria, nor success criteria)
 
 ## Plotting graphs
 
