@@ -656,5 +656,8 @@ some variance between the two runs. lets launch another run, and see what happen
 
 ```
 python ecn.py --enable-cuda --name gpu2withtestsrun3 --model-file model_saves/gpu2newreinf_termentreg0_5_uttreg0_0001_propreg0_01_run3.dat --term-entropy-reg 0.5 --utterance-entropy-reg 0.0001 --proposal-entropy-reg 0.01
+python merge.py --hostname gpu1 --logfile logs/log_20171115_084751gpu2withtestsrun3.log --title 'Comms,Prop,Soc termreg 0.5 uttreg 0.0001 propreg 0.01, run 3'
 ```
 (launched)
+
+(but anyway, seems the ~0.94 or so for the gpu1newreinf_termentreg0_5_uttreg0_0001_propreg0_01.dat model is broadly in agreement with the 0.92 reported in table 1)
