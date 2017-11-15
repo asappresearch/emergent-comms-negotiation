@@ -4,7 +4,6 @@ todo:
 - (change number of utteracne tokens from 10 to 11)
 - probably should rerun with comms turned off
 - probably should do with no-proposal too
-- should we do also non-prosocial?
 
 done:
 - add reward
@@ -32,3 +31,4 @@ done:
 - add train/test split
 - add test to training loop
 - added `--disable-proposal`
+- added non-prosocial

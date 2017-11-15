@@ -700,3 +700,52 @@ and gpu7, test without social, with comms and proposal:
 python ecn.py --enable-cuda --name gpu7nosoc1 --model-file model_saves/gpu7nosoc_termentreg0_5_uttreg0_0001_propreg0_01_run3.dat --term-entropy-reg 0.5 --utterance-entropy-reg 0.0001 --proposal-entropy-reg 0.01 --disable-prosocial
 ```
 (launched)
+
+list of current logfiles:
+```
+log_20171115_012645gpu1withtests.log
+log_20171115_084751gpu2withtestsrun3.log
+log_20171115_091110gpu3nocomms.log
+log_20171115_091432gpu3nocomms.log
+log_20171115_092824gpu4noprop.log
+log_20171115_110859gpu5nocommsnoprop.log
+log_20171115_124546gpu6withtestsrun4.log
+log_20171115_124559gpu7nosoc1.log
+log_20171115_124651gpu6withtestsrun4.log
+log_20171115_124703gpu7nosoc1.log
+log_20171115_124951gpu6withtestsrun4.log
+log_20171115_125020gpu7nosoc1.log
+```
+
+for plotting, we have the following logs:
+- comms,prop,soc, with testing:
+  - logs/log_20171115_012645gpu1withtests.log
+  - logs/log_20171115_084751gpu2withtestsrun3.log
+  - logs/log_20171115_124951gpu6withtestsrun4.log
+  - `python merge.py --hostname gpu1 --logfile 'logs/log_20171115_012645gpu1withtests.log,logs/log_20171115_084751gpu2withtestsrun3.log,logs/log_20171115_124951gpu6withtestsrun4.log' --title 'Comms,Prop,Soc termreg 0.5 uttreg 0.0001 propreg 0.01'`
+- nocomms, noprop, soc:
+  - logs/log_20171115_110859gpu5nocommsnoprop.log
+- comms, prop, no soc:
+  - logs/log_20171115_125020gpu7nosoc1.log
+- comms, noprop, soc:
+  - logs/log_20171115_092824gpu4noprop.log
+- nocomms, prop, soc:
+  - logs/log_20171115_091432gpu3nocomms.log
+
+Looks like the regression test one, gpu6, is showing test results aligned with the others, but training rewards look odd:
+```
+{"episode": 25090, "avg_reward_0": 0.40169024260147757, "avg_reward_1": 0.4774097608483356, "test_reward": 0.8788682699203492, "avg_steps": 2.9519701086956522, "games_sec": 475.6461894587855, "elapsed": 6935.344210624695, "argmaxp_term": 0.7783812395001496, "argmaxp_utt": 0.5034174855591098, "argmaxp_prop": 0.6818017935086952}
+```
+0.4 is a little low. some bug...
+
+found the bug :P  relaunching....
+
+new logfiles for gpu6 and 7:
+```
+log_20171115_144911gpu6withtestsrun4.log
+log_20171115_144928gpu7nosoc1.log
+```
+
+new merge command for comms,prop,soc: `python merge.py --hostname gpu1 --logfile 'logs/log_20171115_012645gpu1withtests.log,logs/log_20171115_084751gpu2withtestsrun3.log,logs/log_20171115_144911gpu6withtestsrun4.log' --title 'Comms,Prop,Soc termreg 0.5 uttreg 0.0001 propreg 0.01'`
+
+see: [images/comms_prop_soc_tests_threeruns.png]
