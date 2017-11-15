@@ -15,7 +15,7 @@ python ecn.py [--disable-comms] [--enable-cuda] [--term-entropy-reg 0.5] [--utte
 
 Where options are:
 - `--enable-cuda`: use NVIDIA GPU, instead of CPU
-- `--disable-comms`: disable the comms channel (not tested since a while, might not be working)
+- `--disable-comms`: disable the comms channel
 - `--term-entropy-reg VALUE`: termination policy entropy regularization
 - `--utterance-entorpy-reg VALUE`: utterance policy entropy regularization
 - `--proposal-entropy-reg VALUE`: proposal policy entropy regularization
