@@ -697,6 +697,6 @@ python ecn.py --enable-cuda --name gpu6withtestsrun4 --model-file model_saves/gp
 
 and gpu7, test without social, with comms and proposal:
 ```
-python ecn.py --enable-cuda --name gpu7nosoc1 --model-file model_saves/gpu7nosoc_termentreg0_5_uttreg0_0001_propreg0_01_run3.dat --term-entropy-reg 0.5 --utterance-entropy-reg 0.0001 --proposal-entropy-reg 0.01
+python ecn.py --enable-cuda --name gpu7nosoc1 --model-file model_saves/gpu7nosoc_termentreg0_5_uttreg0_0001_propreg0_01_run3.dat --term-entropy-reg 0.5 --utterance-entropy-reg 0.0001 --proposal-entropy-reg 0.01 --disable-prosocial
 ```
 (launched)
