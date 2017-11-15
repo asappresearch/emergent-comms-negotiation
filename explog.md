@@ -531,3 +531,91 @@ episode 7276 avg rewards 0.744 0.744 b=0.740 games/sec 573 avg steps 4.0534 argm
 ```
 python ecn.py --enable-cuda --name gpu2newreinf --model-file model_saves/gpu2newreinf_termentreg5.dat --term-entropy-reg 5
 ```
+
+cancelled this because too junky, and launched with:
+```
+python ecn.py --enable-cuda --name gpu2newreinf --model-file model_saves/gpu2newreinf_termentreg05.dat --term-entropy-reg 0.5 --utterance-entropy-reg 0.0001
+```
+
+```
+episode 37964 avg rewards 0.631 0.631 b=0.644 games/sec 527 avg steps 2.9922 argmaxp term=0.7962 utt=0.6525 prop=0.3949
+saved model
+
+   586950 1:0/4 3:2/4 1:0/5
+                                      ACC
+  r: 0.76
+
+episode 37986 avg rewards 0.624 0.624 b=0.619 games/sec 527 avg steps 2.9734 argmaxp term=0.7879 utt=0.6519 prop=0.3971
+
+   869996 3:5/2 5:2/5 2:5/0
+                                      105299 4:2/2 0:0/5 0:0/0
+   ACC
+  r: 1.00
+
+episode 38009 avg rewards 0.641 0.641 b=0.652 games/sec 537 avg steps 3.0268 argmaxp term=0.7936 utt=0.6527 prop=0.4009
+
+   555089 1:0/0 1:0/2 1:1/4
+                                      ACC
+  r: 1.00
+```
+
+looks like proposal ent reg too high, lets lower it to 0.01
+```
+python ecn.py --enable-cuda --name gpu2newreinf --model-file model_saves/gpu2newreinf_termentreg0_5_uttreg0_0001_propreg0_01.dat --term-entropy-reg 0.5 --utterance-entropy-reg 0.0001 --proposal-entropy-reg 0.01
+```
+working ok so far:
+```
+  r: 0.97
+
+episode 40049 avg rewards 0.758 0.758 b=0.741 games/sec 512 avg steps 2.8317 argmaxp term=0.7328 utt=0.8043 prop=0.7673
+
+   888888 5:3/5 1:0/4 0:0/1
+                                      ACC
+  r: 0.82
+
+episode 40072 avg rewards 0.790 0.790 b=0.797 games/sec 554 avg steps 2.7826 argmaxp term=0.7552 utt=0.7998 prop=0.7596
+
+   888888 0:0/2 2:0/4 2:0/5
+                                      ACC
+  r: 0.85
+
+episode 40095 avg rewards 0.785 0.785 b=0.781 games/sec 549 avg steps 2.8013 argmaxp term=0.7541 utt=0.7977 prop=0.7629
+
+   888888 5:0/0 5:2/2 4:2/3
+                                      ACC
+  r: 0.95
+```
+
+sample:
+```
+python ecn.py --testing --enable-cuda --name testing --model-file model_saves/gpu2newreinf_termentreg0_5_uttreg0_0001_propreg0_01.dat
+```
+
+Ok, cool :)
+
+```
+(root) ubuntu@gpu2:~/git/emergent_comms_negotiation$ python ecn.py --testing --enable-cuda --name testing --model-file model_saves/gpu2newreinf_termentreg0_5_uttreg0_0001_propreg0_01.dat
+loaded model
+
+   808080 2:2/2 1:0/2 4:1/1
+                                      ACC
+  r: 0.75
+
+episode 87070 avg rewards 0.945 0.945 b=0.938 games/sec 1059 avg steps 3.0474 argmaxp term=1.0000 utt=1.0000 prop=1.0000
+
+   808080 1:0/3 3:1/1 5:0/0
+                                      633333 5:3/3 1:0/1 4:0/0
+   ACC
+  r: 1.00
+
+episode 87114 avg rewards 0.945 0.945 b=0.941 games/sec 1078 avg steps 3.0506 argmaxp term=1.0000 utt=1.0000 prop=1.0000
+
+   808080 5:1/1 0:0/1 5:2/2
+                                      633333 5:1/1 4:1/1 2:0/2
+   ACC
+  r: 1.00
+
+episode 87159 avg rewards 0.945 0.945 b=0.950 games/sec 1113 avg steps 3.0455 argmaxp term=1.0000 utt=1.0000 prop=1.0000
+```
+
+I think we should add an automatic test step into the main training loop.
