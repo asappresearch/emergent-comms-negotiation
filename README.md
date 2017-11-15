@@ -51,6 +51,8 @@ One negotation is printed out every 3 seconds or so, using the training set; the
 
 <img src="images/v030_comms_social_prop_termreg0_5_uttreg0_0001_propreg0_01_run2.png?raw=true" width="800" />
 
+<img src="images/comms_prop_soc_tests_threeruns.png?raw=true" width="800" />
+
 This is using the following entropy regularizations:
 - termination: 0.5
 - utterance: 0.0001
