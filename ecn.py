@@ -256,7 +256,7 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
         print('')
         return
     last_print = time.time()
-    rewards_sum = torch.zeros(3)
+    rewards_sum = type_constr.FloatTensor(3).fill_(0)
     steps_sum = 0
     count_sum = 0
     for d in ['logs', 'model_saves']:

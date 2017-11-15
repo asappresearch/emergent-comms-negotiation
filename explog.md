@@ -686,3 +686,17 @@ Let's also do no-comms, no-proposal, on gpu5:
 python ecn.py --enable-cuda --name gpu5nocommsnoprop --disable-proposal --disable-comms --model-file model_saves/gpu5nocommsnoprop_reg0_5_uttreg0_0001_propreg0_01_run1.dat --term-entropy-reg 0.5 --utterance-entropy-reg 0.0001 --proposal-entropy-reg 0.01
 ```
 (launched)
+
+Tweaked rewards, so we can do --disable-prosocial. Lets launch two instances now:
+
+gpu6, comms,prop,soc, regression test basically:
+```
+python ecn.py --enable-cuda --name gpu6withtestsrun4 --model-file model_saves/gpu6newreinf_termentreg0_5_uttreg0_0001_propreg0_01_run3.dat --term-entropy-reg 0.5 --utterance-entropy-reg 0.0001 --proposal-entropy-reg 0.01
+```
+(launched)
+
+and gpu7, test without social, with comms and proposal:
+```
+python ecn.py --enable-cuda --name gpu7nosoc1 --model-file model_saves/gpu7nosoc_termentreg0_5_uttreg0_0001_propreg0_01_run3.dat --term-entropy-reg 0.5 --utterance-entropy-reg 0.0001 --proposal-entropy-reg 0.01
+```
+(launched)
