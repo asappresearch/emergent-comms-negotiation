@@ -584,6 +584,20 @@ episode 40095 avg rewards 0.785 0.785 b=0.781 games/sec 549 avg steps 2.8013 arg
    888888 5:0/0 5:2/2 4:2/3
                                       ACC
   r: 0.95
+...
+episode 88918 avg rewards 0.813 0.813 b=0.806 games/sec 547 avg steps 2.8631 argmaxp term=0.7350 utt=0.7994 prop=0.8470
+
+   808808 0:0/2 2:0/2 3:2/2
+                                      ACC
+  r: 1.00
+
+episode 88941 avg rewards 0.813 0.813 b=0.811 games/sec 543 avg steps 2.9049 argmaxp term=0.7356 utt=0.7934 prop=0.8440
+
+   888066 3:1/1 3:1/2 4:2/2
+                                      ACC
+  r: 0.95
+
+episode 88964 avg rewards 0.825 0.825 b=0.827 games/sec 553 avg steps 2.8628 argmaxp term=0.7371 utt=0.7911 prop=0.8454
 ```
 
 sample:

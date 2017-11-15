@@ -1,5 +1,6 @@
 todo:
 - add train/test split
+- add test to training loop
 - check for correlation between utterances and utility?
 - maybe break the problem down, and test each part standalone somehow?
 - (change number of utteracne tokens from 10 to 11)
