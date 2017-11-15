@@ -639,3 +639,10 @@ Plot graph:
 python merge.py --hostname gpu2 --logfile logs/log_20171114_182322gpu2newreinf.log --title 'Comms,Prop,Soc termreg 0.5 uttreg 0.0001 propreg 0.01'
 cp /tmp/out-reward.png images/v030_comms_social_prop_termreg0_5_uttreg0_0001_propreg0_01.png
 ```
+
+implemented running tests every 30 seconds or so, lets spin up a gpu, and start that running, gpu1:
+
+```
+python ecn.py --enable-cuda --name gpu1withtests --model-file model_saves/gpu1newreinf_termentreg0_5_uttreg0_0001_propreg0_01.dat --term-entropy-reg 0.5 --utterance-entropy-reg 0.0001 --proposal-entropy-reg 0.01
+```
+

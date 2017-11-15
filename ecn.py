@@ -314,7 +314,7 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
     prop_matches_argmax_count = 0
     prop_stochastic_draws = 0
     while True:
-        render = time.time() - last_print >= 5.0
+        render = time.time() - last_print >= 30.0
         # render = True
         batch = sampling.generate_training_batch(batch_size=batch_size, test_hashes=test_hashes, random_state=train_r)
         actions, rewards, steps, alive_masks, entropy_loss_by_agent, \
@@ -362,6 +362,25 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
         count_sum += batch_size
 
         if render:
+            """
+            run the test batches, print the results
+            """
+            test_rewards = 0
+            for test_batch in test_batches:
+                actions, rewards, steps, alive_masks, entropy_loss_by_agent, \
+                        _term_matches_argmax_count, _num_policy_runs, _utt_matches_argmax_count, _utt_stochastic_draws, \
+                        _prop_matches_argmax_count, _prop_stochastic_draws = run_episode(
+                    batch=test_batch,
+                    enable_cuda=enable_cuda,
+                    enable_comms=enable_comms,
+                    enable_proposal=enable_proposal,
+                    agent_models=agent_models,
+                    prosocial=prosocial,
+                    render=True,
+                    testing=True)
+                test_rewards += rewards.mean()
+            print('test rewards %.3f' % (test_rewards / len(test_batches)))
+
             time_since_last = time.time() - last_print
             print('episode %s avg rewards %.3f %.3f b=%.3f games/sec %s avg steps %.4f argmaxp term=%.4f utt=%.4f prop=%.4f' % (
                 episode,
@@ -378,6 +397,7 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
                 'episode': episode,
                 'avg_reward_0': rewards_sum[0] / count_sum,
                 'avg_reward_1': rewards_sum[1] / count_sum,
+                'test_reward': test_rewards / len(test_batches),
                 'avg_steps': steps_sum / count_sum,
                 'games_sec': count_sum / time_since_last,
                 'elapsed': time.time() - start_time,
