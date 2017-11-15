@@ -62,12 +62,14 @@ def load_model(model_file, agent_models, agent_opts):
 
 
 class State(object):
-    def __init__(self, batch_size):
-        self.N = sampling.sample_N(batch_size).int()
-        self.pool = sampling.sample_items(batch_size)
+    def __init__(self, N, pool, utilities):
+        batch_size = N.size()[0]
+        self.N = N
+        self.pool = pool
         self.utilities = torch.zeros(batch_size, 2, 3).long()
-        self.utilities[:, 0] = sampling.sample_utility(batch_size)
-        self.utilities[:, 1] = sampling.sample_utility(batch_size)
+        self.utilities[:, 0] = utilities[0]
+        self.utilities[:, 1] = utilities[1]
+
         self.last_proposal = torch.zeros(batch_size, 3).long()
         self.m_prev = torch.zeros(batch_size, 6).long()
 
@@ -144,12 +146,13 @@ def calc_rewards(t, prosocial, s, term):
 
 
 def run_episode(
+        batch,
         enable_cuda,
         enable_comms,
         enable_proposal,
         prosocial,
         agent_models,
-        batch_size,
+        # batch_size,
         testing,
         render=False):
     """
@@ -157,7 +160,8 @@ def run_episode(
     """
 
     type_constr = torch.cuda if enable_cuda else torch
-    s = State(batch_size=batch_size)
+    batch_size = batch['N'].size()[0]
+    s = State(**batch)
     if enable_cuda:
         s.cuda()
 
@@ -242,7 +246,7 @@ def run_episode(
 
 def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, batch_size,
         term_entropy_reg, utterance_entropy_reg, proposal_entropy_reg, enable_cuda,
-        no_load, testing):
+        no_load, testing, test_seed):
     """
     testing option will:
     - use argmax, ie disable stochastic draws
@@ -252,6 +256,14 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
     if seed is not None:
         np.random.seed(seed)
         torch.manual_seed(seed)
+        train_r = np.random.RandomState(seed)
+    else:
+        train_r = np.random
+
+    test_r = np.random.RandomState(test_seed)
+    test_batches = sampling.generate_test_batches(batch_size=batch_size, num_batches=5, random_state=test_r)
+    test_hashes = sampling.hash_batches(test_batches)
+
     episode = 0
     start_time = time.time()
     agent_models = []
@@ -304,15 +316,17 @@ def run(enable_proposal, enable_comms, seed, prosocial, logfile, model_file, bat
     while True:
         render = time.time() - last_print >= 5.0
         # render = True
+        batch = sampling.generate_training_batch(batch_size=batch_size, test_hashes=test_hashes, random_state=train_r)
         actions, rewards, steps, alive_masks, entropy_loss_by_agent, \
                 _term_matches_argmax_count, _num_policy_runs, _utt_matches_argmax_count, _utt_stochastic_draws, \
                 _prop_matches_argmax_count, _prop_stochastic_draws = run_episode(
+            batch=batch,
             enable_cuda=enable_cuda,
             enable_comms=enable_comms,
             enable_proposal=enable_proposal,
             agent_models=agent_models,
             prosocial=prosocial,
-            batch_size=batch_size,
+            # batch_size=batch_size,
             render=render,
             testing=testing)
         term_matches_argmax_count += _term_matches_argmax_count
@@ -400,6 +414,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--model-file', type=str, default='model_saves/model.dat')
     parser.add_argument('--batch-size', type=int, default=128)
+    parser.add_argument('--test-seed', type=int, default=123, help='used for generating test game set')
     parser.add_argument('--seed', type=int, help='optional')
     parser.add_argument('--term-entropy-reg', type=float, default=0.05)
     parser.add_argument('--utterance-entropy-reg', type=float, default=0.001)

@@ -90,7 +90,6 @@ def hash_batches(test_batches):
 
 
 def overlaps(test_hashes, batch):
-    print('batch.keys()', batch.keys())
     target_hashes = set(hash_batch(**batch).tolist())
     return bool(test_hashes & target_hashes)
 
