@@ -3,13 +3,16 @@ import numpy as np
 import ecn
 
 
+import sampling
+
+
 def test_rewards_t0():
     t = 0
     prosocial = True
     batch_size = 128
     torch.manual_seed(123)
     np.random.seed(123)
-    s = ecn.State(batch_size=batch_size)
+    s = ecn.State(**sampling.generate_batch(batch_size))
     agent = 0 if t  % 2 == 0 else 1
     term = torch.from_numpy(np.random.choice(2, batch_size)).long()
     rewards = ecn.calc_rewards(s=s, t=t, prosocial=prosocial, term=term)
@@ -23,7 +26,7 @@ def test_rewards_t1():
     batch_size = 97
     torch.manual_seed(123)
     np.random.seed(123)
-    s = ecn.State(batch_size=batch_size)
+    s = ecn.State(**sampling.generate_batch(batch_size))
     agent = 0 if t  % 2 == 0 else 1
     term = torch.from_numpy(np.random.choice(2, batch_size)).long()
     rewards = ecn.calc_rewards(s=s, t=t, prosocial=prosocial, term=term)
@@ -39,7 +42,7 @@ def test_single_game_noterm():
     batch_size = 1
     torch.manual_seed(123)
     np.random.seed(123)
-    s = ecn.State(batch_size=batch_size)
+    s = ecn.State(**sampling.generate_batch(batch_size))
     agent = 0 if t  % 2 == 0 else 1
     term = torch.ByteTensor([0])
     rewards = ecn.calc_rewards(s=s, t=t, prosocial=prosocial, term=term)
@@ -52,7 +55,7 @@ def test_single_game_term_ideal():
     batch_size = 1
     torch.manual_seed(123)
     np.random.seed(123)
-    s = ecn.State(batch_size=batch_size)
+    s = ecn.State(**sampling.generate_batch(batch_size))
 
     s.pool = torch.LongTensor([[3, 7, 2]])
     s.utilities = torch.LongTensor([[[5,4,3], [3,4,5]]])
@@ -71,7 +74,7 @@ def test_single_game_term_ideal2():
     batch_size = 1
     torch.manual_seed(123)
     np.random.seed(123)
-    s = ecn.State(batch_size=batch_size)
+    s = ecn.State(**sampling.generate_batch(batch_size))
 
     s.pool = torch.LongTensor([[3, 7, 2]])
     s.utilities = torch.LongTensor([[[5,4,3], [3,4,5]]])
@@ -90,7 +93,7 @@ def test_single_game_term_ideal3():
     batch_size = 1
     torch.manual_seed(123)
     np.random.seed(123)
-    s = ecn.State(batch_size=batch_size)
+    s = ecn.State(**sampling.generate_batch(batch_size))
 
     s.pool = torch.LongTensor([[3, 7, 2]])
     s.utilities = torch.LongTensor([[[5,4,3], [3,4,5]]])
@@ -109,7 +112,7 @@ def test_single_game_term_nonideal1():
     batch_size = 1
     torch.manual_seed(123)
     np.random.seed(123)
-    s = ecn.State(batch_size=batch_size)
+    s = ecn.State(**sampling.generate_batch(batch_size))
 
     s.pool = torch.LongTensor([[3, 7, 2]])
     s.utilities = torch.LongTensor([[[5,4,3], [3,4,5]]])
@@ -135,7 +138,7 @@ def test_single_game_term_exceeds_pool():
     batch_size = 1
     torch.manual_seed(123)
     np.random.seed(123)
-    s = ecn.State(batch_size=batch_size)
+    s = ecn.State(**sampling.generate_batch(batch_size))
 
     s.pool = torch.LongTensor([[3, 7, 2]])
     s.utilities = torch.LongTensor([[[5,4,3], [3,4,5]]])
@@ -154,7 +157,7 @@ def test_single_game_term_exceeds_withinpool():
     batch_size = 1
     torch.manual_seed(123)
     np.random.seed(123)
-    s = ecn.State(batch_size=batch_size)
+    s = ecn.State(**sampling.generate_batch(batch_size))
 
     s.pool = torch.LongTensor([[3, 7, 2]])
     s.utilities = torch.LongTensor([[[5,4,3], [3,4,5]]])
@@ -180,7 +183,7 @@ def test_single_game_term_exceeds_withinpool2():
     batch_size = 1
     torch.manual_seed(123)
     np.random.seed(123)
-    s = ecn.State(batch_size=batch_size)
+    s = ecn.State(**sampling.generate_batch(batch_size))
 
     s.pool = torch.LongTensor([[3, 7, 2]])
     s.utilities = torch.LongTensor([[[5,4,3], [3,4,5]]])
@@ -206,7 +209,7 @@ def test_single_game_term_t2():
     batch_size = 1
     torch.manual_seed(123)
     np.random.seed(123)
-    s = ecn.State(batch_size=batch_size)
+    s = ecn.State(**sampling.generate_batch(batch_size))
 
     s.pool = torch.LongTensor([[3, 7, 2]])
     s.utilities = torch.LongTensor([[[5,4,3], [3,4,5]]])
@@ -235,7 +238,7 @@ def test_single_game_term_t2_batch3():
     batch_size = 3
     torch.manual_seed(123)
     np.random.seed(123)
-    s = ecn.State(batch_size=batch_size)
+    s = ecn.State(**sampling.generate_batch(batch_size))
 
     s.pool = torch.from_numpy(np.random.choice(10, (batch_size, 3))).long()
     s.pool[1] = torch.LongTensor([3, 7, 2])
@@ -281,7 +284,7 @@ def test_single_game_term_t2_batch3_2term():
     batch_size = 3
     torch.manual_seed(123)
     np.random.seed(123)
-    s = ecn.State(batch_size=batch_size)
+    s = ecn.State(**sampling.generate_batch(batch_size))
 
     s.pool = torch.from_numpy(np.random.choice(10, (batch_size, 3))).long()
     s.pool[1] = torch.LongTensor([3, 7, 2])
@@ -326,7 +329,7 @@ def test_single_game_term_t2_batch3_2termb():
     batch_size = 3
     torch.manual_seed(123)
     np.random.seed(123)
-    s = ecn.State(batch_size=batch_size)
+    s = ecn.State(**sampling.generate_batch(batch_size))
 
     s.pool = torch.from_numpy(np.random.choice(10, (batch_size, 3))).long()
     s.pool[1] = torch.LongTensor([3, 7, 2])
@@ -370,7 +373,7 @@ def test_single_game_term_t2_batch3_3term():
     batch_size = 3
     torch.manual_seed(123)
     np.random.seed(123)
-    s = ecn.State(batch_size=batch_size)
+    s = ecn.State(**sampling.generate_batch(batch_size))
 
     s.pool = torch.from_numpy(np.random.choice(10, (batch_size, 3))).long()
     s.pool[1] = torch.LongTensor([3, 7, 2])
@@ -415,7 +418,7 @@ def test_single_game_term_t2_batch3_zero_term():
     batch_size = 3
     torch.manual_seed(123)
     np.random.seed(123)
-    s = ecn.State(batch_size=batch_size)
+    s = ecn.State(**sampling.generate_batch(batch_size))
 
     s.pool = torch.from_numpy(np.random.choice(10, (batch_size, 3))).long()
     s.pool[1] = torch.LongTensor([3, 7, 2])
@@ -455,7 +458,7 @@ def test_single_game_term_t2_batch3_oneth_not_term():
     batch_size = 3
     torch.manual_seed(123)
     np.random.seed(123)
-    s = ecn.State(batch_size=batch_size)
+    s = ecn.State(**sampling.generate_batch(batch_size))
 
     s.pool = torch.from_numpy(np.random.choice(10, (batch_size, 3))).long()
     s.pool[1] = torch.LongTensor([3, 7, 2])

@@ -1,6 +1,8 @@
 """
 This doesnt run with py.test, runs like `python nets_test.py [args ... ]`
 
+hence I've prefixed everything with `_` so it doesnt run, but theres probably a better way (pytest.ini etc...)
+
 Thats because this is going to run training, not very unit-testy :)
 
 We want to check things like:
@@ -27,7 +29,7 @@ import nets
 import sampling
 
 
-def test_term_policy(term_entropy_reg, embedding_size, num_values, batch_size):
+def _test_term_policy(term_entropy_reg, embedding_size, num_values, batch_size):
     """
     So, we will have two contexts:
     - previous proposal 0,0,0
@@ -103,7 +105,7 @@ def test_term_policy(term_entropy_reg, embedding_size, num_values, batch_size):
             break
 
 
-def test_proposal_policy(proposal_entropy_reg, embedding_size, num_values, batch_size, enable_cuda):
+def _test_proposal_policy(proposal_entropy_reg, embedding_size, num_values, batch_size, enable_cuda):
     """
     something similar to (now renamed) test_term_policy, but for proposal
     """
@@ -171,7 +173,7 @@ def test_proposal_policy(proposal_entropy_reg, embedding_size, num_values, batch
         episode += 1
 
 
-def test_utterance_policy(utterance_entropy_reg, embedding_size, num_values, batch_size, enable_cuda):
+def _test_utterance_policy(utterance_entropy_reg, embedding_size, num_values, batch_size, enable_cuda):
     """
     something similar to (now renamed) test_term_policy, but for utterance
     """
@@ -252,7 +254,7 @@ if __name__ == '__main__':
     parser_.add_argument('--embedding-size', type=int, default=100)
     parser_.add_argument('--num-values', type=int, default=6)
     parser_.add_argument('--batch-size', type=int, default=128)
-    parser_.set_defaults(func=test_term_policy)
+    parser_.set_defaults(func=_test_term_policy)
 
     parser_ = parsers.add_parser('test-proposal-policy')
     parser_.add_argument('--proposal-entropy-reg', type=float, default=0.05)
@@ -260,7 +262,7 @@ if __name__ == '__main__':
     parser_.add_argument('--num-values', type=int, default=6)
     parser_.add_argument('--batch-size', type=int, default=128)
     parser_.add_argument('--enable-cuda', action='store_true')
-    parser_.set_defaults(func=test_proposal_policy)
+    parser_.set_defaults(func=_test_proposal_policy)
 
     parser_ = parsers.add_parser('test-utterance-policy')
     parser_.add_argument('--utterance-entropy-reg', type=float, default=0.001)
@@ -268,7 +270,7 @@ if __name__ == '__main__':
     parser_.add_argument('--num-values', type=int, default=6)
     parser_.add_argument('--batch-size', type=int, default=128)
     parser_.add_argument('--enable-cuda', action='store_true')
-    parser_.set_defaults(func=test_utterance_policy)
+    parser_.set_defaults(func=_test_utterance_policy)
 
     args = parser.parse_args()
     func = args.func
