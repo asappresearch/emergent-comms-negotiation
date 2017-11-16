@@ -74,29 +74,29 @@ __proposal, comms, prosocial__
 
 Graphs for three training runs, with identical settings:
 
-<img src="images/comms_prop_soc_tests_threerunsc.png?raw=true" width="800" />
+<img src="images/comms_prop_soc_tests_threerunsc.png?raw=true" width="600" />
 
 __Proposal, no comms, prosocial__
 
-<img src="images/20171115_prop_nocomms_soc_800k.png?raw=true" width="800" />
+<img src="images/20171115_prop_nocomms_soc_800k.png?raw=true" width="600" />
 
 __No proposal, comms, prosocial__
 
-<img src="images/20171115_noprop_comms_soc400k.png?raw=true" width="800" />
+<img src="images/20171115_noprop_comms_soc400k.png?raw=true" width="600" />
 
 __No proposal, no comms, prosocial__
 
-<img src="images/20171115_noprop_nocomms_soc700k.png?raw=true" width="800" />
+<img src="images/20171115_noprop_nocomms_soc700k.png?raw=true" width="600" />
 
 __Proposal, comms, no social__
 
 Run 1, same entropy regularization as prosocial graphs:
 
-<img src="images/nosoc_run1_termreg0_5_uttreg0_0001_propreg0_01.png?raw=true" width="800" />
+<img src="images/nosoc_run1_termreg0_5_uttreg0_0001_propreg0_01.png?raw=true" width="600" />
 
 Run 2, with updated entropy regularization:
 
-<img src="images/nosoc_term0_05_utt0_0001_prop0_005.png?raw=true" width="800" />
+<img src="images/nosoc_term0_05_utt0_0001_prop0_005.png?raw=true" width="600" />
 
 ## Unit tests
 
