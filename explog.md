@@ -875,3 +875,6 @@ Let's start summarizing the results in a table:
 | N   | N       | Y     | Y         | 0.5      | 0.0001 | 0.01  | Very low              | >= 0.90 (climbing) | term=0.7781 utt=0.0000 prop=0.6006 | gpu5 |
 | Y   | Y       | N     | Y         | 0.5      | 0.0001 | 0.01  | Very High             | ~0.25  | term=0.7467 utt=0.9284 prop=0.8137 | was gpu7 |
 | Y   | Y       | N     | Y         | 0.05     | 0.0001 | 0.005 | Very Low              | >= 0.80 (climbing) | term=0.9820 utt=0.7040 prop=0.6523 | gpu7 |
+
+Lets kill gpu1,2,6 for now (since rewards already really high...)
+(killed)
