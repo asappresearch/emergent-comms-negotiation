@@ -62,11 +62,11 @@ Notes:
 |Prop? | Comm? | Soc? | Rend term? | Term reg | Utt reg | Prop reg | Subjective variance | Reward | Greedy ratios |
 |-----|-------|-------|-------------|--------|--------|------------|---------------------|---------|-----------|
 | Y   | Y     | Y      | Y          | 0.5    | 0.0001 | 0.01   | Low                     | ~0.96 | term=0.7345 utt=0.7635 prop=0.8304 |
-| Y   | N      | Y      | Y         | 0.5    | 0.0001 | 0.01   | Medium-High             | ~0.91 | term=0.6965 utt=0.0000 prop=0.8741 |
-| N   | Y      | Y     | Y          | 0.5     | 0.0001 | 0.01  | High                   | ~0.83  | term=0.6889 utt=0.7849 prop=0.8222 |
-| N   | N       | Y     | Y         | 0.5      | 0.0001 | 0.01  | Very low              | >= 0.90 (climbing) | term=0.7781 utt=0.0000 prop=0.6006 |
-| Y   | Y       | N     | Y         | 0.5      | 0.0001 | 0.01  | Very High             | ~0.25  | term=0.7467 utt=0.9284 prop=0.8137 |
-| Y   | Y       | N     | Y         | 0.05     | 0.0001 | 0.005 | Very Low              | >= 0.80 (climbing) | term=0.9820 utt=0.7040 prop=0.6523 |
+| Y   | -      | Y      | Y         | 0.5    | 0.0001 | 0.01   | Medium-High             | ~0.91 | term=0.6965 utt=0.0000 prop=0.8741 |
+| -   | Y      | Y     | Y          | 0.5     | 0.0001 | 0.01  | High                   | ~0.83  | term=0.6889 utt=0.7849 prop=0.8222 |
+| -   | -       | Y     | Y         | 0.5      | 0.0001 | 0.01  | Very low              | >= 0.90 (climbing) | term=0.7781 utt=0.0000 prop=0.6006 |
+| Y   | Y       | -     | Y         | 0.5      | 0.0001 | 0.01  | Very High             | ~0.25  | term=0.7467 utt=0.9284 prop=0.8137 |
+| Y   | Y       | -     | Y         | 0.05     | 0.0001 | 0.005 | Very Low              | >= 0.80 (climbing) | term=0.9820 utt=0.7040 prop=0.6523 |
 
 ### Training curves
 
