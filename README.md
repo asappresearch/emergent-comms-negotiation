@@ -48,10 +48,10 @@ One negotation is printed out every 3 seconds or so, using the training set; the
 
 ## Results so far, summary
 
-| Agent sociability | Proposal | Linguistic | Both | None |
-|------------------|----------|------------|-------|------|
-| Self-interested, random term |  |   |  >=0.80  | |
-| Prosocial, random term | ~0.91 | ~0.83 | ~0.96 | >= 0.90 |
+| Agent sociability            | Proposal | Linguistic | Both   | None    |
+|------------------------------|----------|------------|--------|---------|
+| Self-interested, random term |          |            | >=0.80 |         |
+| Prosocial, random term       | ~0.91    | ~0.83      | ~0.96  | >= 0.90 |
 
 Notes:
 - prosocial runs all use termreg=0.5, uttreg=0.0001, propreg=0.01
