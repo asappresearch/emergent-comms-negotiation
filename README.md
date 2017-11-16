@@ -74,7 +74,7 @@ __proposal, comms, prosocial__
 
 Graphs for three training runs, with identical settings:
 
-<img src="images/comms_prop_soc_tests_threerunsc.png.png?raw=true" width="800" />
+<img src="images/comms_prop_soc_tests_threerunsc.png?raw=true" width="800" />
 
 This is using the following entropy regularizations:
 - termination: 0.5
