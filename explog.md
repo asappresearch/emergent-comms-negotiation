@@ -864,3 +864,14 @@ maybe term entreg too high?
 - medium variance (not so crazy as for noprop,comms; or for nosoc; but higher than say prop,comms,soc)
 - reasonably high result: plateau'd around ~0.92 test
 - => matches paper Table 1
+
+Let's start summarizing the results in a table:
+
+|Prop? | Comm? | Soc? | Rend term? | Term reg | Utt reg | Prop reg | Subjective variance | Reward | Greedy ratios | gpu |
+|-----|-------|-------|-------------|--------|--------|------------|---------------------|---------|---------------|--|
+| Y   | Y     | Y      | Y          | 0.5    | 0.0001 | 0.01   | Low                     | ~0.96 | term=0.7345 utt=0.7635 prop=0.8304 | gpu1,gpu2,gpu6 |
+| Y   | N      | Y      | Y         | 0.5    | 0.0001 | 0.01   | Medium-High             | ~0.91 | term=0.6965 utt=0.0000 prop=0.8741 | gpu3 |
+| N   | Y      | Y     | Y          | 0.5     | 0.0001 | 0.01  | High                   | ~0.83  | term=0.6889 utt=0.7849 prop=0.8222 | gpu4 |
+| N   | N       | Y     | Y         | 0.5      | 0.0001 | 0.01  | Very low              | >= 0.90 (climbing) | term=0.7781 utt=0.0000 prop=0.6006 | gpu5 |
+| Y   | Y       | N     | Y         | 0.5      | 0.0001 | 0.01  | Very High             | ~0.25  | term=0.7467 utt=0.9284 prop=0.8137 | was gpu7 |
+| Y   | Y       | N     | Y         | 0.05     | 0.0001 | 0.005 | Very Low              | >= 0.80 (climbing) | term=0.9820 utt=0.7040 prop=0.6523 | gpu7 |
