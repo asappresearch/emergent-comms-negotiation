@@ -838,3 +838,10 @@ Let's lower termination entropy and try again. term entropy 0.5 => 0.05.  propos
  python ecn.py --enable-cuda --name gpu7nosoc2 --model-file model_saves/gpu7nosoc_termentreg0_05_uttreg0_0001_propreg0_005_run3.dat --term-entropy-reg 0.05 --utterance-entropy-reg 0.0001 --proposal-entropy-reg 0.005 --disable-prosocial
  ```
 (launched)
+
+results better than earlier ones, see [images/nosoc_term0_05_utt0_0001_prop0_005.png]
+
+greedy ratio for term seems a little high:
+```
+term=0.9884 utt=0.6202 prop=0.6427
+```
