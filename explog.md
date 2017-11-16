@@ -746,7 +746,10 @@ log_20171115_144911gpu6withtestsrun4.log
 log_20171115_144928gpu7nosoc1.log
 ```
 
-new merge command for comms,prop,soc: `python merge.py --hostname gpu1 --logfile 'logs/log_20171115_012645gpu1withtests.log,logs/log_20171115_084751gpu2withtestsrun3.log,logs/log_20171115_144911gpu6withtestsrun4.log' --title 'Comms,Prop,Soc termreg 0.5 uttreg 0.0001 propreg 0.01'`
+new merge command for comms,prop,soc:
+```
+python merge.py --hostname gpu1 --logfile 'logs/log_20171115_012645gpu1withtests.log,logs/log_20171115_084751gpu2withtestsrun3.log,logs/log_20171115_144911gpu6withtestsrun4.log' --title 'Comms,Prop,Soc termreg 0.5 uttreg 0.0001 propreg 0.01'
+```
 
 see: [images/comms_prop_soc_tests_threerunsb.png]
 
@@ -774,3 +777,64 @@ nocomms noprop soc: term=0.7781 utt=0.0000 prop=0.6006
 comms prop nosoc: term=0.7467 utt=0.9284 prop=0.8137
 ```
 
+graph for nosoc looks weird. Bug?
+
+some sampled conversations:
+
+from training:
+```
+
+   ACC
+  r: 0.00
+```
+from testing:
+```
+   534343 3:4/5 1:2/2 0:0/4
+                                      686868 0:0/5 2:2/2 3:4/4
+   ACC
+  r: 0.96
+
+
+   534343 3:0/0 2:3/5 3:0/0
+                                      686868 0:0/0 2:4/5 5:0/0
+   534343 3:0/0 2:3/5 3:0/0
+                                      686868 0:0/0 2:4/5 5:0/0
+   534343 3:0/0 2:3/5 3:0/0
+                                      686868 0:0/0 2:4/5 5:0/0
+   534343 3:0/0 2:3/5 3:0/0
+                                      686868 0:0/0 2:4/5 5:0/0
+  [out of time]
+  r: 0.00
+
+
+   534343 3:4/4 1:0/5 4:4/4
+                                      ACC
+  r: 0.95
+
+
+   534343 0:0/1 0:0/5 5:2/2
+                                      ACC
+  r: 0.94
+
+
+   534343 4:4/4 5:2/3 5:4/5
+                                      686868 1:1/4 5:3/3 2:4/5
+   534343 4:3/4 5:0/3 5:4/5
+                                      686868 1:0/4 5:3/3 2:4/5
+   534343 4:4/4 5:3/3 5:4/5
+                                      686868 1:0/4 5:3/3 2:4/5
+   534343 4:4/4 5:3/3 5:4/5
+  [out of time]
+  r: 0.00
+```
+seems like the agents always say the same thing, and basically just guess based on their own utilities.
+
+termination seems flaky
+
+oh... what is happening is, in training the agents negotiate a bit, but termination entropy always terminates the conversations quickly-ish. but in testing, keep running out of time, since very deterministic: the whole conversation, not just termination.
+
+Let's lower termination entropy and try again. term entropy 0.5 => 0.05.  proposal entropy 0.01 => 0.005
+```
+ python ecn.py --enable-cuda --name gpu7nosoc2 --model-file model_saves/gpu7nosoc_termentreg0_05_uttreg0_0001_propreg0_005_run3.dat --term-entropy-reg 0.05 --utterance-entropy-reg 0.0001 --proposal-entropy-reg 0.005 --disable-prosocial
+ ```
+(launched)
