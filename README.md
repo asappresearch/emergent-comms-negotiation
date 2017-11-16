@@ -94,7 +94,7 @@ Run 1, same entropy regularization as prosocial graphs:
 
 <img src="images/nosoc_run1_termreg0_5_uttreg0_0001_propreg0_01.png?raw=true" width="600" />
 
-Run 2, with updated entropy regularization:
+Run 2, with reduced entropy regularization:
 
 <img src="images/nosoc_term0_05_utt0_0001_prop0_005.png?raw=true" width="600" />
 
