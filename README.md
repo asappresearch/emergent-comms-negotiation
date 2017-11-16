@@ -94,7 +94,7 @@ term=0.7345 utt=0.7635 prop=0.8304
 
 __Proposal, no comms, prosocial__
 
-<img src="images/20171115_prop_nocomms_soc_800k.png.png?raw=true" width="800" />
+<img src="images/20171115_prop_nocomms_soc_800k.png?raw=true" width="800" />
 
 Proportion of policy actions matching the greedy action:
 ```
