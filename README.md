@@ -57,6 +57,8 @@ Notes:
 - prosocial runs all use termreg=0.5, uttreg=0.0001, propreg=0.01
 - self-interested run uses: termreg=0.05, uttreg=0.0001, propreg=0.005
 
+### Scenario details
+
 |Prop? | Comm? | Soc? | Rend term? | Term reg | Utt reg | Prop reg | Subjective variance | Reward | Greedy ratios |
 |-----|-------|-------|-------------|--------|--------|------------|---------------------|---------|-----------|
 | Y   | Y     | Y      | Y          | 0.5    | 0.0001 | 0.01   | Low                     | ~0.96 | term=0.7345 utt=0.7635 prop=0.8304 |
@@ -66,9 +68,9 @@ Notes:
 | Y   | Y       | N     | Y         | 0.5      | 0.0001 | 0.01  | Very High             | ~0.25  | term=0.7467 utt=0.9284 prop=0.8137 |
 | Y   | Y       | N     | Y         | 0.05     | 0.0001 | 0.005 | Very Low              | >= 0.80 (climbing) | term=0.9820 utt=0.7040 prop=0.6523 |
 
-## Example training curves
+### Training curves
 
-### proposal, comms, prosocial
+__proposal, comms, prosocial__
 
 Graphs for three training runs, with identical settings:
 
@@ -90,7 +92,7 @@ Proportion of policy actions matching the greedy action:
 term=0.7345 utt=0.7635 prop=0.8304
 ```
 
-### proposal, no comms, prosocial
+__Proposal, no comms, prosocial__
 
 <img src="images/20171115_prop_nocomms_soc.png?raw=true" width="800" />
 
@@ -99,7 +101,7 @@ Proportion of policy actions matching the greedy action:
 term=0.6965 utt=0.0000 prop=0.8741
 ```
 
-### no proposal, comms, prosocial
+__No proposal, comms, prosocial__
 
 <img src="images/20171115_noprop_comms_soc.png?raw=true" width="800" />
 
@@ -108,7 +110,7 @@ Proportion of policy actions matching the greedy action:
 term=0.6889 utt=0.7849 prop=0.8222
 ```
 
-### no proposal, no comms, prosocial
+__No proposal, no comms, prosocial__
 
 <img src="images/20171115_noprop_nocomms_soc.png?raw=true" width="800" />
 
@@ -117,7 +119,7 @@ Proportion of policy actions matching the greedy action:
 term=0.7781 utt=0.0000 prop=0.6006
 ```
 
-### proposal, comms, no social
+__Proposal, comms, no social__
 
 <img src="images/20171115_prop_comms_nosoc.png?raw=true" width="800" />
 
