@@ -845,3 +845,22 @@ greedy ratio for term seems a little high:
 ```
 term=0.9884 utt=0.6202 prop=0.6427
 ```
+
+Hmmmm, this is interesting: new graph for nocomms,noprop,soc, at 700k batches: [images/20171115_noprop_nocomms_soc700k.png]
+- plateaud for 350k batches, from 150k to 500k
+- then started increasing again :P
+
+[images/20171115_noprop_comms_soc400k.png]:
+- very high variance
+- somewhat plateaud (amongst the variance...)
+- ~0.83 test reward
+=> high variance might mean ent reg too high?  it is:
+```
+term=0.6889 utt=0.7950 prop=0.8066
+```
+maybe term entreg too high?
+
+[images/20171115_prop_nocomms_soc_800k.png]:
+- medium variance (not so crazy as for noprop,comms; or for nosoc; but higher than say prop,comms,soc)
+- reasonably high result: plateau'd around ~0.92 test
+- => matches paper Table 1
