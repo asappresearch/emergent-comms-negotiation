@@ -72,7 +72,7 @@ Notes:
 
 __proposal, comms, prosocial__
 
-Graphs for three training runs, with identical settings:
+Three training runs, identical settings:
 
 <img src="images/comms_prop_soc_tests_threerunsc.png?raw=true" width="600" />
 
