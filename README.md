@@ -74,7 +74,7 @@ __proposal, comms, prosocial__
 
 Graphs for three training runs, with identical settings:
 
-<img src="images/comms_prop_soc_tests_threerunsb.png?raw=true" width="800" />
+<img src="images/comms_prop_soc_tests_threerunsc.png.png?raw=true" width="800" />
 
 This is using the following entropy regularizations:
 - termination: 0.5
@@ -94,7 +94,7 @@ term=0.7345 utt=0.7635 prop=0.8304
 
 __Proposal, no comms, prosocial__
 
-<img src="images/20171115_prop_nocomms_soc.png?raw=true" width="800" />
+<img src="images/20171115_prop_nocomms_soc_800k.png.png?raw=true" width="800" />
 
 Proportion of policy actions matching the greedy action:
 ```
@@ -103,7 +103,7 @@ term=0.6965 utt=0.0000 prop=0.8741
 
 __No proposal, comms, prosocial__
 
-<img src="images/20171115_noprop_comms_soc.png?raw=true" width="800" />
+<img src="images/20171115_noprop_comms_soc400k.png?raw=true" width="800" />
 
 Proportion of policy actions matching the greedy action:
 ```
@@ -112,7 +112,7 @@ term=0.6889 utt=0.7849 prop=0.8222
 
 __No proposal, no comms, prosocial__
 
-<img src="images/20171115_noprop_nocomms_soc.png?raw=true" width="800" />
+<img src="images/20171115_noprop_nocomms_soc700k.png?raw=true" width="800" />
 
 Proportion of policy actions matching the greedy action:
 ```
@@ -121,12 +121,18 @@ term=0.7781 utt=0.0000 prop=0.6006
 
 __Proposal, comms, no social__
 
-<img src="images/20171115_prop_comms_nosoc.png?raw=true" width="800" />
+Run 1, same entropy regularization as prosocial graphs:
+
+<img src="images/nosoc_run1_termreg0_5_uttreg0_0001_propreg0_01.png?raw=true" width="800" />
 
 Proportion of policy actions matching the greedy action:
 ```
 term=0.7467 utt=0.9284 prop=0.8137
 ```
+
+Run 2, with updated entropy regularization:
+
+<img src="images/nosoc_term0_05_utt0_0001_prop0_005.png?raw=true" width="800" />
 
 ## Unit tests
 
